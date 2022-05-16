@@ -1,0 +1,4 @@
+*.exe
+cert.pem
+server.key
+
