@@ -188,6 +188,10 @@ type ManifestSearchResult struct {
 
 func main() {
     fmt.Println("Hello world")
+
+    var xd = FindManifestFiles()
+    fmt.Printf("%+v\n", xd)
+
     router := gin.Default()
     router.SetTrustedProxies(nil)
     router.GET("/information", func(c *gin.Context) {
@@ -258,7 +262,7 @@ func main() {
                             PackageName: "bottom",
                             Publisher: "Clement Tsang",
                             ShortDescription: "test package",
-                            License: "GPLv2",
+                            License: "MIT",
                         },
                         Channel: "",
                         Locales: []Locale{},

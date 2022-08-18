@@ -1,0 +1,17 @@
+---
+
+PackageIdentifier: rewinged.bottom
+PackageVersion: 0.6.8
+PackageLocale: en-US
+Publisher: Clement Tsang
+PackageName: bottom
+License: MIT
+ShortDescription: test package
+Installers:
+  - Architecture: x64
+    InstallerType: msi
+    InstallerUrl: "https://github.com/ClementTsang/bottom/releases/download/0.6.8/bottom_x86_64_installer.msi"
+    InstallerSha256: "43A860A1ECAC287CAF9745D774B0B2CE9C0A2A79D4048893E7649B0D8048EE58"
+    #SignatureSha256: ""
+ManifestType: singleton
+ManifestVersion: 1.1.0
