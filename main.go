@@ -189,8 +189,14 @@ type ManifestSearchResult struct {
 func main() {
     fmt.Println("Hello world")
 
-    var xd = FindManifestFiles()
-    fmt.Printf("%+v\n", xd)
+    var package_manifests = FindManifestFiles()
+    fmt.Println("Found", len(package_manifests), "package manifests.")
+
+    var manifests = []SingletonManifest{}
+    for _, file := range package_manifests {
+        var manifest = ParseManifestFile("./packages/" + file.Name())
+        manifests = append(manifests, *manifest)
+    }
 
     router := gin.Default()
     router.SetTrustedProxies(nil)
@@ -223,8 +229,41 @@ func main() {
 //        if err := c.ShouldBindBodyWith(&post, binding.JSON); err == nil {
         if err := c.BindJSON(&post); err == nil {
             fmt.Printf("%+v\n", post)
-
             response := &ManifestSearchResult{
+                RequiredPackageMatchFields: []PackageMatchField{},
+                Data: []ManifestSearchResponse {},
+            }
+
+            var results = []SingletonManifest{}
+
+            if post.Query.KeyWord != "" {
+                fmt.Println("someone searched the repo for:", post.Query.KeyWord)
+                results = GetPackagesByKeyword(manifests, post.Query.KeyWord)
+            } else if post.Inclusions != nil && len(post.Inclusions) > 0  {
+                fmt.Println("advanced search with inclusions[]")
+                var searchresults = GetPackagesByMatchFilter(manifests, post.Inclusions)
+                results = append(results, searchresults...)
+            }
+
+            fmt.Println("... with", len(results), "results.")
+
+            if len(results) > 0 {
+                for _, result := range results {
+                    response.Data = append(response.Data, ManifestSearchResponse{
+                        PackageIdentifier: result.PackageIdentifier,
+                        PackageName: result.PackageName,
+                        Publisher: result.Publisher,
+                        Versions: []ManifestSearchVersion {
+                            {
+                                PackageVersion: result.PackageVersion,
+                            },
+                        },
+                    })
+                }
+            }
+
+            /*
+            response = &ManifestSearchResult{
                 RequiredPackageMatchFields: []PackageMatchField{},
                 Data: []ManifestSearchResponse {
                     {
@@ -239,6 +278,7 @@ func main() {
                     },
                 },
             }
+            */
 
             fmt.Printf("%+v\n", response)
 
@@ -251,6 +291,14 @@ func main() {
     router.GET("/packageManifests/:package_identifier", func(c *gin.Context) {
         fmt.Println("/packageManifests: Someone tried to GET package '", c.Param("package_identifier"), "'")
         fmt.Println("with query params:", c.Request.URL.Query())
+
+        var result = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
+        if result != nil {
+            fmt.Println("the package was found!")
+        } else {
+            fmt.Println("the package was NOT found!")
+        }
+
         response := ManifestSingleResponse {
             Data: Manifest {
                 PackageIdentifier: "bottom",
