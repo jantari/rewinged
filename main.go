@@ -77,7 +77,7 @@ type ManifestSearch struct {
     MaximumResults int
     FetchAllManifests bool
     Query SearchRequestMatch
-    Inclusions SearchRequestPackageMatchFilter
+    Inclusions []SearchRequestPackageMatchFilter
     Filters []SearchRequestPackageMatchFilter
 }
 
@@ -162,5 +162,10 @@ func main() {
             fmt.Println(err)
         }
     })
+    router.GET("/packageManifests/:package_identifier", func(c *gin.Context) {
+        fmt.Println("/packageManifests: Someone tried to GET package '", c.Param("package_identifier"), "'")
+        fmt.Println("with query params:", c.Request.URL.Query())
+    })
+    //"kek?Version=1.0.0"
     router.RunTLS(":8080", "./cert.pem", "./server.key") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
