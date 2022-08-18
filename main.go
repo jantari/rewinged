@@ -326,5 +326,5 @@ func main() {
 
         c.JSON(200, response)
     })
-    router.RunTLS(":8080", "./cert.pem", "./server.key") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+    router.RunTLS(":8443", "./cert.pem", "./server.key") // listen and serve on 0.0.0.0:8443 (for windows "localhost:8443")
 }
