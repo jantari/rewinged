@@ -26,7 +26,7 @@ type SingletonManifest struct {
   PackageName string `yaml:"PackageName"`
   License string `yaml:"License"`
   ShortDescription string `yaml:"ShortDescription"`
-  Installers []SingletonInstaller `yaml:"Installers"`
+  Installers []Installer `yaml:"Installers"`
   ManifestType string `yaml:"ManifestType"`
   ManifestVersion string `yaml:"ManifestVersion"`
 }
@@ -99,14 +99,13 @@ func GetPackagesByKeyword (manifests []SingletonManifest, keyword string) []Sing
 }
 
 func GetPackageByIdentifier (manifests []SingletonManifest, packageidentifier string) *SingletonManifest {
-  var manifestResult = &SingletonManifest{}
-  manifestResult = nil
   for _, manifest := range manifests {
     if manifest.PackageIdentifier == packageidentifier {
-      manifestResult = &manifest
+      fmt.Println("searched ID", packageidentifier, "equals a package:", manifest.PackageIdentifier)
+      return &manifest
     }
   }
 
-  return manifestResult
+  return nil
 }
 

@@ -39,10 +39,10 @@ type Versions struct {
 }
 
 type Installer struct {
-    Architecture Architecture
-    InstallerType InstallerType
-    InstallerUrl string
-    InstallerSha256 string
+    Architecture Architecture `yaml:"Architecture"`
+    InstallerType InstallerType `yaml:"InstallerType"`
+    InstallerUrl string `yaml:"InstallerUrl"`
+    InstallerSha256 string `yaml:"InstallerSha256"`
 }
 
 type Locale struct {
@@ -173,7 +173,7 @@ type ManifestSearchResponse struct {
 }
 
 type ManifestSingleResponse struct {
-    Data Manifest
+    Data *Manifest
     RequiredQueryParameters []QueryParameter
     UnsupportedQueryParameters []QueryParameter
 }
@@ -292,42 +292,38 @@ func main() {
         fmt.Println("/packageManifests: Someone tried to GET package '", c.Param("package_identifier"), "'")
         fmt.Println("with query params:", c.Request.URL.Query())
 
-        var result = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
-        if result != nil {
-            fmt.Println("the package was found!")
+        response := ManifestSingleResponse {
+            RequiredQueryParameters: []QueryParameter{},
+            UnsupportedQueryParameters: []QueryParameter{},
+            Data: nil,
+        }
+
+        var pkg = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
+        if pkg != nil {
+            fmt.Println("the package was found!", pkg.PackageIdentifier)
+
+            response.Data = &Manifest {
+                PackageIdentifier: pkg.PackageIdentifier,
+                Versions: []Versions {
+                    {
+                        PackageVersion: pkg.PackageVersion,
+                        DefaultLocale: Locale {
+                            PackageLocale: pkg.PackageLocale,
+                            PackageName: pkg.PackageName,
+                            Publisher: pkg.Publisher,
+                            ShortDescription: pkg.ShortDescription,
+                            License: pkg.License,
+                        },
+                        Channel: "",
+                        Locales: []Locale{},
+                        Installers: pkg.Installers,
+                    },
+                },
+            }
         } else {
             fmt.Println("the package was NOT found!")
         }
 
-        response := ManifestSingleResponse {
-            Data: Manifest {
-                PackageIdentifier: "bottom",
-                Versions: []Versions {
-                    {
-                        PackageVersion: "0.6.8",
-                        DefaultLocale: Locale {
-                            PackageLocale: "en-US",
-                            PackageName: "bottom",
-                            Publisher: "Clement Tsang",
-                            ShortDescription: "test package",
-                            License: "MIT",
-                        },
-                        Channel: "",
-                        Locales: []Locale{},
-                        Installers: []Installer {
-                            {
-                                Architecture: "x64",
-                                InstallerType: "msi",
-                                InstallerUrl: "https://github.com/ClementTsang/bottom/releases/download/0.6.8/bottom_x86_64_installer.msi",
-                                InstallerSha256: "43A860A1ECAC287CAF9745D774B0B2CE9C0A2A79D4048893E7649B0D8048EE58",
-                            },
-                        },
-                    },
-                },
-            },
-            RequiredQueryParameters: []QueryParameter{},
-            UnsupportedQueryParameters: []QueryParameter{},
-        }
         c.JSON(200, response)
     })
     router.RunTLS(":8080", "./cert.pem", "./server.key") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
