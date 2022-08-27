@@ -21,14 +21,9 @@ func Must(i interface{}, err error) interface{} {
 func main() {
     fmt.Println("Hello world")
 
-    var package_manifests = FindManifestFiles()
-    fmt.Println("Found", len(package_manifests), "package manifests.")
-
     var manifests = []SingletonManifest{}
-    for _, file := range package_manifests {
-        var manifest = ParseManifestFile("./packages/" + file.Name())
-        manifests = append(manifests, *manifest)
-    }
+    manifests = GetManifests("./packages")
+    fmt.Println("Found", len(manifests), "package manifests.")
 
     router := gin.Default()
     router.SetTrustedProxies(nil)
