@@ -151,6 +151,11 @@ func ParseManifestFile (path string) *SingletonManifest {
   return manifest
 }
 
+func CaseInsensitiveContains(s, substr string) bool {
+  s, substr = strings.ToUpper(s), strings.ToUpper(substr)
+  return strings.Contains(s, substr)
+}
+
 func GetPackagesByMatchFilter (manifests []SingletonManifest, searchfilters []SearchRequestPackageMatchFilter) []SingletonManifest {
   var manifestResults = []SingletonManifest{}
 
@@ -164,7 +169,7 @@ func GetPackagesByMatchFilter (manifests []SingletonManifest, searchfilters []Se
       f := reflect.Indirect(r).FieldByName(string(matchfilter.PackageMatchField))
       var fieldvalue = string(f.String())
 
-      if strings.Contains(fieldvalue, matchfilter.RequestMatch.KeyWord) {
+      if CaseInsensitiveContains(fieldvalue, matchfilter.RequestMatch.KeyWord) {
         manifestResults = append(manifestResults, manifest)
         // Jump to the next manifest to prevent returning the same one multiple times if it matched more than 1 search criteria
         continue NEXT_MANIFEST
@@ -178,7 +183,7 @@ func GetPackagesByMatchFilter (manifests []SingletonManifest, searchfilters []Se
 func GetPackagesByKeyword (manifests []SingletonManifest, keyword string) []SingletonManifest {
   var manifestResults = []SingletonManifest{}
   for _, manifest := range manifests {
-    if strings.Contains(manifest.PackageName, keyword) || strings.Contains(manifest.ShortDescription, keyword) {
+    if CaseInsensitiveContains(manifest.PackageName, keyword) || CaseInsensitiveContains(manifest.ShortDescription, keyword) {
       manifestResults = append(manifestResults, manifest)
     }
   }
