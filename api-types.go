@@ -30,6 +30,8 @@ type Installer struct {
     InstallerType InstallerType `yaml:"InstallerType"`
     InstallerUrl string `yaml:"InstallerUrl"`
     InstallerSha256 string `yaml:"InstallerSha256"`
+    SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
+    ProductCode string `yaml:"ProductCode"`
 }
 
 type Locale struct {

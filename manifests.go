@@ -21,14 +21,6 @@ type BaseManifest struct {
   ManifestVersion string `yaml:"ManifestVersion"`
 }
 
-type SingletonInstaller struct {
-  Architecture string `yaml:"Architecture"`
-  InstallerType string `yaml:"InstallerType"`
-  InstallerUrl string `yaml:"InstallerUrl"`
-  InstallerSha256 string `yaml:"InstallerSha256"`
-  SignatureSha256 string `yaml:"SignatureSha256"`
-}
-
 type SingletonManifest struct {
   PackageIdentifier string `yaml:"PackageIdentifier"`
   PackageVersion string `yaml:"PackageVersion"`
@@ -79,6 +71,8 @@ func GetManifests (path string) []SingletonManifest {
       var merged_manifest, err = ParseManifestMultiFile(value...)
       if err != nil {
         fmt.Println(err)
+      } else {
+        fmt.Printf("\n%+v\n", merged_manifest)
       }
       manifests = append(manifests, *merged_manifest)
     }
@@ -156,17 +150,65 @@ func CaseInsensitiveContains(s, substr string) bool {
   return strings.Contains(s, substr)
 }
 
+func CaseInsensitiveHasSuffix(s, substr string) bool {
+  s, substr = strings.ToUpper(s), strings.ToUpper(substr)
+  return strings.HasSuffix(s, substr)
+}
+
+// Modified from: https://stackoverflow.com/a/38407429
+func findField(v interface{}, name string) reflect.Value {
+  // create queue of values to search. Start with the function arg.
+  queue := []reflect.Value{reflect.ValueOf(v)}
+  for len(queue) > 0 {
+    v := queue[0]
+    queue = queue[1:]
+    // dereference pointers
+    for v.Kind() == reflect.Ptr {
+        v = v.Elem()
+    }
+    // check all elements in slices
+    if v.Kind() == reflect.Slice {
+      if v.Len() > 0 {
+        for i := 0; i < v.Len(); i++ {
+          queue = append(queue, v.Index(i))
+        }
+      } else {
+        //fmt.Println("CONTINUE (EMPTY SLICE)")
+        continue
+      }
+    }
+    // ignore if this is not a struct
+    if v.Kind() != reflect.Struct {
+        //fmt.Println("CONTINUE (NOT STRUCT)")
+        continue
+    }
+    // iterate through fields looking for match on name
+    t := v.Type()
+    for i := 0; i < v.NumField(); i++ {
+        //fmt.Println("TESTING FIELD", t.Field(i).Name)
+        if t.Field(i).Name == name {
+            // found it!
+            fmt.Println("FOUND THE FIELD!")
+            return v.Field(i)
+        }
+        // push field to queue
+        queue = append(queue, v.Field(i))
+    }
+  }
+  return reflect.Value{}
+}
+
+
 func GetPackagesByMatchFilter (manifests []SingletonManifest, searchfilters []SearchRequestPackageMatchFilter) []SingletonManifest {
   var manifestResults = []SingletonManifest{}
 
   NEXT_MANIFEST:
   for _, manifest := range manifests {
     for _, matchfilter := range searchfilters {
-      // Get the value of a struct field passing in the field name as a string
-      // Kinda like PowerShells $Variable.PSObject.Properties['Name'].Value
-      // Source: https://stackoverflow.com/a/18931036
-      r := reflect.ValueOf(manifest)
-      f := reflect.Indirect(r).FieldByName(string(matchfilter.PackageMatchField))
+      // Get the value of a nested struct field passing in the field name to search for as a string
+      // Source: https://stackoverflow.com/a/38407429
+      f := findField(manifest, string(matchfilter.PackageMatchField))
+      //fmt.Printf("findfield returns:\n%+v\n", f)
       var fieldvalue = string(f.String())
 
       if CaseInsensitiveContains(fieldvalue, matchfilter.RequestMatch.KeyWord) {
