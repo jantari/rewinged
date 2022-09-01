@@ -128,19 +128,22 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
   }
 
   fmt.Println(len(versions))
-
-  versions_api := [1]Versions{}
+  fmt.Println("version manifest data: ", versions[0].DefaultLocale, versions[0].PackageVersion)
 
   defLocale := GetLocaleByName(append(locales, *defaultlocale), versions[0].DefaultLocale)
   if defLocale == nil {
     fmt.Println("oh, defLocale is nil")
   }
 
-  versions_api[0].DefaultLocale = *defLocale
-  versions_api[0].Locales       = locales
-  versions_api[0].Installers    = installers[0].Installers
-
-  fmt.Println(versions[0].DefaultLocale, versions[0].PackageVersion)
+  versions_api := []Versions{
+    {
+      PackageVersion: versions[0].PackageVersion,
+      DefaultLocale: *defLocale,
+      Channel: "",
+      Locales: locales,
+      Installers: installers[0].Installers,
+    },
+  }
 
   manifest := &Manifest {
     PackageIdentifier: packageidentifier,
