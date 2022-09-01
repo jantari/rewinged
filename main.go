@@ -21,7 +21,7 @@ func Must(i interface{}, err error) interface{} {
 func main() {
     fmt.Println("Hello world")
 
-    var manifests = []SingletonManifest{}
+    var manifests = []Manifest{}
     manifests = GetManifests("./packages")
     fmt.Println("Found", len(manifests), "package manifests.")
 
@@ -61,7 +61,7 @@ func main() {
                 Data: []ManifestSearchResponse {},
             }
 
-            var results = []SingletonManifest{}
+            var results = []Manifest{}
 
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
@@ -78,11 +78,11 @@ func main() {
                 for _, result := range results {
                     response.Data = append(response.Data, ManifestSearchResponse{
                         PackageIdentifier: result.PackageIdentifier,
-                        PackageName: result.PackageName,
-                        Publisher: result.Publisher,
+                        PackageName: result.Versions[0].DefaultLocale.PackageName,
+                        Publisher: result.Versions[0].DefaultLocale.Publisher,
                         Versions: []ManifestSearchVersion {
                             {
-                                PackageVersion: result.PackageVersion,
+                                PackageVersion: result.Versions[0].PackageVersion,
                             },
                         },
                     })
@@ -129,24 +129,7 @@ func main() {
         if pkg != nil {
             fmt.Println("the package was found!", pkg.PackageIdentifier)
 
-            response.Data = &Manifest {
-                PackageIdentifier: pkg.PackageIdentifier,
-                Versions: []Versions {
-                    {
-                        PackageVersion: pkg.PackageVersion,
-                        DefaultLocale: Locale {
-                            PackageLocale: pkg.PackageLocale,
-                            PackageName: pkg.PackageName,
-                            Publisher: pkg.Publisher,
-                            ShortDescription: pkg.ShortDescription,
-                            License: pkg.License,
-                        },
-                        Channel: "",
-                        Locales: []Locale{},
-                        Installers: pkg.Installers,
-                    },
-                },
-            }
+            response.Data = pkg
         } else {
             fmt.Println("the package was NOT found!")
         }

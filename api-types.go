@@ -12,9 +12,44 @@ type Package struct {
     PackageIdentifier string
 }
 
+// A singleton manifest can only contain one locale and one installer
+// Schema: https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.singleton.1.1.0.json
+type SingletonManifest struct {
+  PackageIdentifier string `yaml:"PackageIdentifier"`
+  PackageVersion string `yaml:"PackageVersion"`
+  PackageLocale string `yaml:"PackageLocale"`
+  Publisher string `yaml:"Publisher"`
+  PackageName string `yaml:"PackageName"`
+  License string `yaml:"License"`
+  ShortDescription string `yaml:"ShortDescription"`
+  Installers [1]Installer `yaml:"Installers"`
+  ManifestType string `yaml:"ManifestType"`
+  ManifestVersion string `yaml:"ManifestVersion"`
+}
+
 type Manifest struct {
     PackageIdentifier string
     Versions []Versions
+}
+
+// The struct for a separate version manifest file
+type VersionManifest struct {
+    PackageIdentifier string `yaml:"PackageIdentifier"`
+    PackageVersion string `yaml:"PackageVersion"`
+    DefaultLocale string `yaml:"DefaultLocale"`
+    ManifestType string `yaml:"ManifestType"`
+    ManifestVersion string `yaml:"ManifestVersion"`
+}
+
+// The struct for a separate installer manifest file
+type InstallerManifest struct {
+    PackageIdentifier string `yaml:"PackageIdentifier"`
+    PackageVersion string `yaml:"PackageVersion"`
+
+    Installers []Installer `yaml:"Installers"`
+
+    ManifestType string `yaml:"ManifestType"`
+    ManifestVersion string `yaml:"ManifestVersion"`
 }
 
 type Versions struct {
@@ -35,20 +70,20 @@ type Installer struct {
 }
 
 type Locale struct {
-    PackageLocale string
+    PackageLocale string `yaml:"PackageLocale"`
 //    Moniker // Is this needed for DefaultLocale?
-    Publisher string
+    Publisher string `yaml:"Publisher"`
 //    PublisherUrl
 //    PublisherSupportUrl
 //    PrivacyUrl
 //    Author
-    PackageName string
+    PackageName string `yaml:"PackageName"`
 //    PackageUrl
-    License string
+    License string `yaml:"License"`
 //    LicenseUrl
 //    Copyright
 //    CopyrightUrl
-    ShortDescription string
+    ShortDescription string `yaml:"ShortDescription"`
 //    Description
 //    Tags
 //    ReleaseNotes
