@@ -2,8 +2,6 @@ package main
 
 import (
     "fmt"
-//    "net"
-//    "io/ioutil"
 
     "github.com/gin-gonic/gin"
 //    "github.com/gin-gonic/gin/binding"
@@ -15,8 +13,6 @@ func Must(i interface{}, err error) interface{} {
     }
     return i
 }
-
-//
 
 func main() {
     fmt.Println("Hello world")
@@ -30,7 +26,7 @@ func main() {
     router.GET("/information", func(c *gin.Context) {
         response := new(Information)
         response.Data.SourceIdentifier = "testing"
-        response.Data.ServerSupportedVersions = []string{"1.0.0", "1.1.0"}
+        response.Data.ServerSupportedVersions = []string{"1.1.0"}
         c.JSON(200, response)
     })
     router.GET("/packages", func(c *gin.Context) {
@@ -49,11 +45,7 @@ func main() {
         //
     })
     router.POST("/manifestSearch", func(c *gin.Context) {
-//        body, _ := ioutil.ReadAll(c.Request.Body)
-//        println(string(body))
-
         var post ManifestSearch
-//        if err := c.ShouldBindBodyWith(&post, binding.JSON); err == nil {
         if err := c.BindJSON(&post); err == nil {
             fmt.Printf("%+v\n", post)
             response := &ManifestSearchResult{
@@ -91,24 +83,6 @@ func main() {
                     })
                 }
             }
-
-            /*
-            response = &ManifestSearchResult{
-                RequiredPackageMatchFields: []PackageMatchField{},
-                Data: []ManifestSearchResponse {
-                    {
-                        PackageIdentifier: "bottom",
-                        PackageName: "bottom",
-                        Publisher: "test",
-                        Versions: []ManifestSearchVersion {
-                            {
-                                PackageVersion: "0.6.8",
-                            },
-                        },
-                    },
-                },
-            }
-            */
 
             fmt.Printf("%+v\n", response)
 

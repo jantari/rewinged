@@ -57,17 +57,15 @@ func GetManifests (path string) []Manifest {
       fmt.Println("    Merging manifest for package", key)
       var merged_manifest, err = ParseManifestMultiFile(value...)
       if err != nil {
-        fmt.Println(err)
+        fmt.Println("    Could not parse the manifest files for this package", err)
       } else {
-        fmt.Printf("\nmerged_manifest: %+v\n", merged_manifest)
+        manifests = append(manifests, *merged_manifest)
       }
-      manifests = append(manifests, *merged_manifest)
     }
   }
 
   return manifests
 }
-
 
 func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
   if len(filenames) <= 0 {
@@ -127,9 +125,6 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
     }
   }
 
-  fmt.Println(len(versions))
-  fmt.Println("version manifest data: ", versions[0].DefaultLocale, versions[0].PackageVersion)
-
   defLocale := GetLocaleByName(append(locales, *defaultlocale), versions[0].DefaultLocale)
   if defLocale == nil {
     fmt.Println("oh, defLocale is nil")
@@ -150,17 +145,13 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
     Versions: versions_api[:],
   }
 
-  fmt.Printf("\nmanifest inside of ParseManifestMultiFile: %+v\n", manifest)
-
   return manifest, nil //err
 }
 
 func GetLocaleByName (locales []Locale, localename string) *Locale {
-  fmt.Println("looking for the locale", localename, "in", len(locales), "total locales")
+  fmt.Println("GetLocaleByName: looking for the locale", localename, "in", len(locales), "total locales")
   for _, locale := range locales {
-    fmt.Println("maybe ", locale.PackageLocale)
     if locale.PackageLocale == localename {
-      fmt.Println("found the locale", localename)
       return &locale
     }
   }
@@ -318,7 +309,6 @@ func GetPackagesByMatchFilter (manifests []Manifest, searchfilters []SearchReque
         // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
         // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
         case Exact:
-          fmt.Println("trying exact match", requestMatchValue, matchfilter.RequestMatch.KeyWord)
           if requestMatchValue == matchfilter.RequestMatch.KeyWord {
             manifestResults = append(manifestResults, manifest)
             // Jump to the next manifest to prevent returning the same one multiple times if it matched more than 1 search criteria
