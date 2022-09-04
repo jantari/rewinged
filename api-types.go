@@ -183,9 +183,9 @@ type ManifestSearch struct {
 
 type ManifestSearchVersion struct {
     PackageVersion string
-//    Channel string
-//    PackageFamilyNames []string // TODO: NOT THE ACTUAL DATATYPE!
-//    ProductCodes []string // TODO: NOT THE ACTUAL DATATYPE!
+    Channel string //maxlength: 16, unused
+    PackageFamilyNames []string
+    ProductCodes []string
 }
 
 type ManifestSearchResponse struct {

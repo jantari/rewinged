@@ -83,6 +83,9 @@ func main() {
                         Versions: []ManifestSearchVersion {
                             {
                                 PackageVersion: result.Versions[0].PackageVersion,
+                                Channel: "",
+                                PackageFamilyNames: []string{},
+                                ProductCodes: []string{ result.Versions[0].Installers[0].ProductCode },
                             },
                         },
                     })
