@@ -24,6 +24,12 @@ type ExpectedReturnCode struct {
     ReturnResponse ReturnResponse `yaml:"ReturnResponse"`
 }
 
+type Agreement struct {
+    AgreementLabel string `yaml:"AgreementLabel"`
+    Agreement string `yaml:"Agreement"`
+    AgreementUrl string `yaml:"AgreementUrl"`
+}
+
 type Architecture string
 
 const (

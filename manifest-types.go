@@ -51,3 +51,55 @@ type InstallerManifest struct {
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
+// The struct for a separate locale manifest file
+// https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
+type LocaleManifest struct {
+    PackageIdentifier string `yaml:"PackageIdentifier"`
+    PackageVersion string `yaml:"PackageVersion"`
+    PackageLocale string `yaml:"PackageLocale"`
+    Publisher string `yaml:"Publisher"`
+    PublisherUrl string `yaml:"PublisherUrl"`
+    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
+    PrivacyUrl string `yaml:"PrivacyUrl"`
+    Author string `yaml:"Author"`
+    PackageName string `yaml:"PackageName"`
+    PackageUrl string `yaml:"PackageUrl"`
+    License string `yaml:"License"`
+    LicenseUrl string `yaml:"LicenseUrl"`
+    Copyright string `yaml:"Copyright"`
+    CopyrightUrl string `yaml:"CopyrightUrl"`
+    ShortDescription string `yaml:"ShortDescription"`
+    Description string `yaml:"Description"`
+    Tags []string `yaml:"Tags"`
+    Agreements []Agreement `yaml:"Agreements"`
+    ReleaseNotes string `yaml:"ReleaseNotes"`
+    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
+}
+
+// The struct for a separate defaultlocale manifest file
+// https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
+// It is the same as Locale except with an added Moniker
+type DefaultLocaleManifest struct {
+    PackageIdentifier string `yaml:"PackageIdentifier"`
+    PackageVersion string `yaml:"PackageVersion"`
+    PackageLocale string `yaml:"PackageLocale"`
+    Publisher string `yaml:"Publisher"`
+    PublisherUrl string `yaml:"PublisherUrl"`
+    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
+    PrivacyUrl string `yaml:"PrivacyUrl"`
+    Author string `yaml:"Author"`
+    PackageName string `yaml:"PackageName"`
+    PackageUrl string `yaml:"PackageUrl"`
+    License string `yaml:"License"`
+    LicenseUrl string `yaml:"LicenseUrl"`
+    Copyright string `yaml:"Copyright"`
+    CopyrightUrl string `yaml:"CopyrightUrl"`
+    ShortDescription string `yaml:"ShortDescription"`
+    Description string `yaml:"Description"`
+    Moniker string `yaml:"Moniker"`
+    Tags []string `yaml:"Tags"`
+    Agreements []Agreement `yaml:"Agreements"`
+    ReleaseNotes string `yaml:"ReleaseNotes"`
+    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
+}
+

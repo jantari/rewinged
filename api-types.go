@@ -19,32 +19,58 @@ type Manifest struct {
 
 type Versions struct {
     PackageVersion string
-    DefaultLocale Locale
+    DefaultLocale DefaultLocale
     Channel string
     Locales []Locale
     Installers []Installer
 }
 
+// API Locale schema
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1336
 type Locale struct {
     PackageLocale string `yaml:"PackageLocale"`
-//    Moniker
     Publisher string `yaml:"Publisher"`
-//    PublisherUrl
-//    PublisherSupportUrl
-//    PrivacyUrl
-//    Author
+    PublisherUrl string `yaml:"PublisherUrl"`
+    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
+    PrivacyUrl string `yaml:"PrivacyUrl"`
+    Author string `yaml:"Author"`
     PackageName string `yaml:"PackageName"`
-//    PackageUrl
+    PackageUrl string `yaml:"PackageUrl"`
     License string `yaml:"License"`
-//    LicenseUrl
-//    Copyright
-//    CopyrightUrl
+    LicenseUrl string `yaml:"LicenseUrl"`
+    Copyright string `yaml:"Copyright"`
+    CopyrightUrl string `yaml:"CopyrightUrl"`
     ShortDescription string `yaml:"ShortDescription"`
-//    Description
-//    Tags
-//    ReleaseNotes
-//    ReleaseNotesUrl
-//    Agreements
+    Description string `yaml:"Description"`
+    Tags []string `yaml:"Tags"`
+    Agreements []Agreement `yaml:"Agreements"`
+    ReleaseNotes string `yaml:"ReleaseNotes"`
+    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
+}
+
+// API DefaultLocale schema
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1421
+// It is the same as Locale except with an added Moniker
+type DefaultLocale struct {
+    PackageLocale string `yaml:"PackageLocale"`
+    Publisher string `yaml:"Publisher"`
+    PublisherUrl string `yaml:"PublisherUrl"`
+    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
+    PrivacyUrl string `yaml:"PrivacyUrl"`
+    Author string `yaml:"Author"`
+    PackageName string `yaml:"PackageName"`
+    PackageUrl string `yaml:"PackageUrl"`
+    License string `yaml:"License"`
+    LicenseUrl string `yaml:"LicenseUrl"`
+    Copyright string `yaml:"Copyright"`
+    CopyrightUrl string `yaml:"CopyrightUrl"`
+    ShortDescription string `yaml:"ShortDescription"`
+    Description string `yaml:"Description"`
+    Moniker string `yaml:"Moniker"`
+    Tags []string `yaml:"Tags"`
+    Agreements []Agreement `yaml:"Agreements"`
+    ReleaseNotes string `yaml:"ReleaseNotes"`
+    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
 type PackageMultipleResponse struct {

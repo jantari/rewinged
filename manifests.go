@@ -35,7 +35,8 @@ func GetManifests (path string) []Manifest {
           var manifest = ParseManifestFile(path + "/" + file.Name())
           manifests = append(manifests, *manifest)
         } else {
-          nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] = append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
+          nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
+            append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
         }
       }
     }
@@ -46,7 +47,7 @@ func GetManifests (path string) []Manifest {
     fmt.Printf("%+v\n", nonSingletonsMap)
     for key, value := range nonSingletonsMap {
       fmt.Println("    Merging manifest for package", key)
-      var merged_manifest, err = ParseManifestMultiFile(value...)
+      var merged_manifest, err = ParseMultiFileManifest(value...)
       if err != nil {
         fmt.Println("    Could not parse the manifest files for this package", err)
       } else {
@@ -58,7 +59,8 @@ func GetManifests (path string) []Manifest {
   return manifests
 }
 
-func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
+//
+func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
   if len(filenames) <= 0 {
     return nil, errors.New("You must provide at least one filename for reading Values")
   }
@@ -66,8 +68,8 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
   var packageidentifier string
   versions      := []VersionManifest{}
   installers    := []InstallerManifest{}
-  locales       := []Locale{}
-  defaultlocale := &Locale{}
+  locales       := []LocaleManifest{}
+  defaultlocale := &DefaultLocaleManifest{}
 
   for _, file := range filenames {
     var basemanifest = ParseFileAsBaseManifest(file)
@@ -98,7 +100,7 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
         installers = append(installers, *installer)
       case "locale":
         fmt.Println("Parsing locale manifest ...")
-        locale := &Locale{}
+        locale := &LocaleManifest{}
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
           fmt.Printf("unmarshal locale err   #%v ", err)
@@ -116,17 +118,21 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
     }
   }
 
-  defLocale := GetLocaleByName(append(locales, *defaultlocale), versions[0].DefaultLocale)
-  if defLocale == nil {
-    fmt.Println("oh, defLocale is nil")
+  // This transforms the manifest data into the format the API will return.
+  // This logic should probably be moved out of this function, so that it returns
+  // the full unaltered data from the combined manifests - and restructuring to
+  // API-format will happen somewhere else
+  var apiLocales []Locale
+  for _, locale := range locales {
+    apiLocales = append(apiLocales, *localeManifestToAPILocale(locale))
   }
 
   versions_api := []Versions{
     {
       PackageVersion: versions[0].PackageVersion,
-      DefaultLocale: *defLocale,
+      DefaultLocale: *defaultLocaleManifestToAPIDefaultLocale(*defaultlocale),
       Channel: "",
-      Locales: locales,
+      Locales: apiLocales,
       Installers: installers[0].Installers,
     },
   }
@@ -137,6 +143,53 @@ func ParseManifestMultiFile (filenames ...string) (*Manifest, error) {
   }
 
   return manifest, nil //err
+}
+
+func defaultLocaleManifestToAPIDefaultLocale (locm DefaultLocaleManifest) *DefaultLocale {
+  return &DefaultLocale{
+    PackageLocale: locm.PackageLocale,
+    Publisher: locm.Publisher,
+    PublisherUrl: locm.PublisherUrl,
+    PublisherSupportUrl: locm.PublisherSupportUrl,
+    PrivacyUrl: locm.PrivacyUrl,
+    Author: locm.Author,
+    PackageName: locm.PackageName,
+    PackageUrl: locm.PackageUrl,
+    License: locm.License,
+    LicenseUrl: locm.LicenseUrl,
+    Copyright: locm.Copyright,
+    CopyrightUrl: locm.CopyrightUrl,
+    ShortDescription: locm.ShortDescription,
+    Description: locm.Description,
+    Moniker: locm.Moniker,
+    Tags: locm.Tags,
+    Agreements: locm.Agreements,
+    ReleaseNotes: locm.ReleaseNotes,
+    ReleaseNotesUrl: locm.ReleaseNotesUrl,
+  }
+}
+
+func localeManifestToAPILocale (locm LocaleManifest) *Locale {
+  return &Locale{
+    PackageLocale: locm.PackageLocale,
+    Publisher: locm.Publisher,
+    PublisherUrl: locm.PublisherUrl,
+    PublisherSupportUrl: locm.PublisherSupportUrl,
+    PrivacyUrl: locm.PrivacyUrl,
+    Author: locm.Author,
+    PackageName: locm.PackageName,
+    PackageUrl: locm.PackageUrl,
+    License: locm.License,
+    LicenseUrl: locm.LicenseUrl,
+    Copyright: locm.Copyright,
+    CopyrightUrl: locm.CopyrightUrl,
+    ShortDescription: locm.ShortDescription,
+    Description: locm.Description,
+    Tags: locm.Tags,
+    Agreements: locm.Agreements,
+    ReleaseNotes: locm.ReleaseNotes,
+    ReleaseNotesUrl: locm.ReleaseNotesUrl,
+  }
 }
 
 func GetLocaleByName (locales []Locale, localename string) *Locale {
@@ -188,7 +241,7 @@ func SingletonToStandardManifest (singleton *SingletonManifest) *Manifest {
     Versions: []Versions {
       {
         PackageVersion: singleton.PackageVersion,
-        DefaultLocale: Locale {
+        DefaultLocale: DefaultLocale {
           PackageLocale: singleton.PackageLocale,
           PackageName: singleton.PackageName,
           Publisher: singleton.Publisher,
