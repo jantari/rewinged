@@ -1,4 +1,5 @@
 *.exe
 cert.pem
 server.key
+resource.syso
 
