@@ -60,13 +60,13 @@ func main() {
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
                 results = GetPackagesByKeyword(manifests, post.Query.KeyWord)
-            } else if post.Inclusions != nil && len(post.Inclusions) > 0  {
-                fmt.Println("advanced search with inclusions[]")
-                var searchresults = GetPackagesByMatchFilter(manifests, post.Inclusions)
+            } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
+                fmt.Println("advanced search with inclusions[] and/or filters[]")
+                var searchresults = GetPackagesByMatchFilter(manifests, post.Inclusions, post.Filters)
                 results = append(results, searchresults...)
             }
 
-            fmt.Println("... with", len(results), "results.")
+            fmt.Println("... with", len(results), "results:")
 
             if len(results) > 0 {
                 for _, result := range results {
