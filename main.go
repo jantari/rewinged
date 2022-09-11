@@ -55,33 +55,39 @@ func main() {
                 Data: []ManifestSearchResponse {},
             }
 
-            var results = []Manifest{}
+            // results is a map where the PackageIdentifier is the key
+            // and the values are arrays of manifests with that PackageIdentifier.
+            // This means the values will be different versions of the package.
+            var results map[string][]Manifest
 
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
                 results = GetPackagesByKeyword(manifests, post.Query.KeyWord)
             } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
                 fmt.Println("advanced search with inclusions[] and/or filters[]")
-                var searchresults = GetPackagesByMatchFilter(manifests, post.Inclusions, post.Filters)
-                results = append(results, searchresults...)
+                results = GetPackagesByMatchFilter(manifests, post.Inclusions, post.Filters)
             }
 
             fmt.Println("... with", len(results), "results:")
 
             if len(results) > 0 {
-                for _, result := range results {
+                for packageId, packageVersions := range results {
+                    var versions []ManifestSearchVersion
+
+                    for _, version := range packageVersions {
+                        versions = append(versions, ManifestSearchVersion{
+                            PackageVersion: version.Versions[0].PackageVersion,
+                            Channel: "",
+                            PackageFamilyNames: []string{},
+                            ProductCodes: []string{ version.Versions[0].Installers[0].ProductCode },
+                        })
+                    }
+
                     response.Data = append(response.Data, ManifestSearchResponse{
-                        PackageIdentifier: result.PackageIdentifier,
-                        PackageName: result.Versions[0].DefaultLocale.PackageName,
-                        Publisher: result.Versions[0].DefaultLocale.Publisher,
-                        Versions: []ManifestSearchVersion {
-                            {
-                                PackageVersion: result.Versions[0].PackageVersion,
-                                Channel: "",
-                                PackageFamilyNames: []string{},
-                                ProductCodes: []string{ result.Versions[0].Installers[0].ProductCode },
-                            },
-                        },
+                        PackageIdentifier: packageId,
+                        PackageName: packageVersions[0].Versions[0].DefaultLocale.PackageName,
+                        Publisher: packageVersions[0].Versions[0].DefaultLocale.Publisher,
+                        Versions: versions,
                     })
                 }
             }

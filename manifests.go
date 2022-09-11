@@ -320,8 +320,8 @@ func findField(v interface{}, name string) reflect.Value {
 }
 
 
-func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) []Manifest {
-  var manifestResults = []Manifest{}
+func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Manifest {
+  var manifestResultsMap = make(map[string][]Manifest)
 
   NEXT_MANIFEST:
   for _, manifest := range manifests {
@@ -394,7 +394,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
     }
 
     if len(inclusions) == 0 {
-      manifestResults = append(manifestResults, manifest)
+      manifestResultsMap[manifest.PackageIdentifier] = append(manifestResultsMap[manifest.PackageIdentifier], manifest)
       continue NEXT_MANIFEST
     }
 
@@ -472,25 +472,25 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
       }
     }
 
-    // All filters and inclusions have passed for this manifest, add it to the return list
+    // All filters and inclusions have passed for this manifest, add it to the returned map
     if anyInclusionMatched {
-      fmt.Println("Adding manifest to the results list", manifest.PackageIdentifier)
-      manifestResults = append(manifestResults, manifest)
+      fmt.Println("Adding manifest to the results map", manifest.PackageIdentifier)
+      manifestResultsMap[manifest.PackageIdentifier] = append(manifestResultsMap[manifest.PackageIdentifier], manifest)
     }
   }
 
-  return manifestResults
+  return manifestResultsMap
 }
 
-func GetPackagesByKeyword (manifests []Manifest, keyword string) []Manifest {
-  var manifestResults = []Manifest{}
+func GetPackagesByKeyword (manifests []Manifest, keyword string) map[string][]Manifest {
+  var manifestResultsMap = make(map[string][]Manifest)
   for _, manifest := range manifests {
     if CaseInsensitiveContains(manifest.Versions[0].DefaultLocale.PackageName, keyword) || CaseInsensitiveContains(manifest.Versions[0].DefaultLocale.ShortDescription, keyword) {
-      manifestResults = append(manifestResults, manifest)
+      manifestResultsMap[manifest.PackageIdentifier] = append(manifestResultsMap[manifest.PackageIdentifier], manifest)
     }
   }
 
-  return manifestResults
+  return manifestResultsMap
 }
 
 func GetPackageByIdentifier (manifests []Manifest, packageidentifier string) *Manifest {
