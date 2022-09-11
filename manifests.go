@@ -145,7 +145,7 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
       DefaultLocale: *defaultLocaleManifestToAPIDefaultLocale(*defaultlocale),
       Channel: "",
       Locales: apiLocales,
-      Installers: installers[0].Installers,
+      Installers: installerManifestToAPIInstallers(installers[0]),
     },
   }
 
@@ -155,6 +155,45 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
   }
 
   return manifest, nil //err
+}
+
+// This function takes a defaultValue for comparison and then two values
+// for comparison. It returns the first non-default value.
+func nonDefault[T comparable] (defaultValue T, optionA T, optionB T) T {
+  if optionA == defaultValue {
+    return optionB
+  }
+  return optionA
+}
+
+// The installers in a manifest can contain 'global' properties
+// that apply to all individual installers listed. In the API responses
+// these have to be merged and set on all individual installers.
+func installerManifestToAPIInstallers (instm InstallerManifest) []Installer {
+  var apiInstallers []Installer
+  var zeroInstaller Installer = Installer{}
+
+  fmt.Printf("zeroInstaller InstallModes: %+v\n", zeroInstaller.InstallModes)
+
+  for _, installer := range instm.Installers {
+    apiInstallers = append(apiInstallers, Installer {
+      Architecture: installer.Architecture, // Already mandatory per-Installer
+      MinimumOSVersion: nonDefault(zeroInstaller.MinimumOSVersion, installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
+      Platform: installer.Platform, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
+      InstallerType: nonDefault(zeroInstaller.InstallerType, installer.InstallerType, instm.InstallerType),
+      Scope: nonDefault(zeroInstaller.Scope, installer.Scope, instm.Scope),
+      InstallerUrl: installer.InstallerUrl, // Already mandatory per-Installer
+      InstallerSha256: installer.InstallerSha256, // Already mandatory per-Installer
+      SignatureSha256: installer.SignatureSha256, // Can only be set per-Installer, impossible to copy from global manifest properties
+      InstallModes: installer.InstallModes, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
+      InstallerSuccessCodes: installer.InstallerSuccessCodes, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
+      ExpectedReturnCodes: installer.ExpectedReturnCodes, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
+      ProductCode: nonDefault(zeroInstaller.ProductCode, installer.ProductCode, instm.ProductCode),
+      ReleaseDate: nonDefault(zeroInstaller.ReleaseDate, installer.ReleaseDate, instm.ReleaseDate),
+    })
+  }
+
+  return apiInstallers
 }
 
 func defaultLocaleManifestToAPIDefaultLocale (locm DefaultLocaleManifest) *DefaultLocale {
