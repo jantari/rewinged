@@ -309,7 +309,7 @@ func findField(v interface{}, name string) reflect.Value {
         //fmt.Println("TESTING FIELD", t.Field(i).Name)
         if t.Field(i).Name == name {
             // found it!
-            fmt.Println("FOUND THE FIELD", name, "!")
+            //fmt.Println("FOUND THE FIELD", name, "!")
             return v.Field(i)
         }
         // push field to queue
@@ -339,7 +339,8 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           // enable proper matching we also only compare against the normalized packagename.
           requestMatchValue = strings.ReplaceAll(strings.ToLower(manifest.Versions[0].DefaultLocale.PackageName), " ", "")
         case PackageIdentifier:
-          fallthrough
+          // We don't need to recursively search for this field, it's easy to get to
+          requestMatchValue = manifest.PackageIdentifier
         case PackageName:
           fallthrough
         case Moniker:
@@ -400,6 +401,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
     var anyInclusionMatched bool
     anyInclusionMatched = true
     // process inclusions (if any)
+    NEXT_INCLUSION:
     for _, inclusion := range inclusions {
       var requestMatchValue string
       anyInclusionMatched = false
@@ -410,7 +412,8 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           // enable proper matching we also only compare against the normalized packagename.
           requestMatchValue = strings.ReplaceAll(strings.ToLower(manifest.Versions[0].DefaultLocale.PackageName), " ", "")
         case PackageIdentifier:
-          fallthrough
+          // We don't need to recursively search for this field, it's easy to get to
+          requestMatchValue = manifest.PackageIdentifier
         case PackageName:
           fallthrough
         case Moniker:
@@ -440,13 +443,13 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           if requestMatchValue == inclusion.RequestMatch.KeyWord {
             // Break out of the inclusions loop after one successful match
             anyInclusionMatched = true
-            break
+            break NEXT_INCLUSION
           }
         case CaseInsensitive:
           if strings.EqualFold(requestMatchValue, inclusion.RequestMatch.KeyWord) {
             // Break out of the inclusions loop after one successful match
             anyInclusionMatched = true
-            break
+            break NEXT_INCLUSION
           }
         case StartsWith:
           // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
@@ -454,7 +457,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           if strings.HasPrefix(requestMatchValue, inclusion.RequestMatch.KeyWord) {
             // Break out of the inclusions loop after one successful match
             anyInclusionMatched = true
-            break
+            break NEXT_INCLUSION
           }
         case Substring:
           // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
@@ -462,7 +465,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           if CaseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {
             // Break out of the inclusions loop after one successful match
             anyInclusionMatched = true
-            break
+            break NEXT_INCLUSION
           }
         default:
           // Unimplemented: Wildcard, Fuzzy, FuzzySubstring
@@ -471,6 +474,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
 
     // All filters and inclusions have passed for this manifest, add it to the return list
     if anyInclusionMatched {
+      fmt.Println("Adding manifest to the results list", manifest.PackageIdentifier)
       manifestResults = append(manifestResults, manifest)
     }
   }
