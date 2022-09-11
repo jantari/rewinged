@@ -28,7 +28,11 @@ func GetManifests (path string) []Manifest {
       manifests = append(manifests, manifests_from_dir...)
     } else {
       if strings.HasSuffix(file.Name(), ".yml") || strings.HasSuffix(file.Name(), ".yaml") {
-        var basemanifest = ParseFileAsBaseManifest(path + "/" + file.Name())
+        var basemanifest, err = ParseFileAsBaseManifest(path + "/" + file.Name())
+        if err != nil {
+          fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
+          continue
+        }
         fmt.Printf("  BaseManifest: %+v\n", basemanifest)
 
         if basemanifest.ManifestType == "singleton" {
@@ -72,7 +76,11 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
   defaultlocale := &DefaultLocaleManifest{}
 
   for _, file := range filenames {
-    var basemanifest = ParseFileAsBaseManifest(file)
+    var basemanifest, err = ParseFileAsBaseManifest(file)
+    if err != nil {
+      fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, skipping", file, err)
+      continue
+    }
     packageidentifier = basemanifest.PackageIdentifier
 
     yamlFile, err := ioutil.ReadFile(file)
@@ -86,8 +94,9 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
         err = yaml.Unmarshal(yamlFile, version)
         if err != nil {
           fmt.Printf("unmarshal version err   #%v ", err)
+        } else {
+          fmt.Println("  Successfully unmarshalled version")
         }
-        fmt.Printf("unmarshalled version %+v\n", *version)
         versions = append(versions, *version)
       case "installer":
         fmt.Println("Parsing installer manifest ...")
@@ -95,8 +104,9 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
           fmt.Printf("unmarshal installer err   #%v ", err)
+        } else {
+          fmt.Println("  Successfully unmarshalled installer")
         }
-        fmt.Printf("unmarshalled installer %+v\n", installer)
         installers = append(installers, *installer)
       case "locale":
         fmt.Println("Parsing locale manifest ...")
@@ -104,16 +114,18 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
           fmt.Printf("unmarshal locale err   #%v ", err)
+        } else {
+          fmt.Println("  Successfully unmarshalled locale")
         }
-        fmt.Printf("unmarshalled locale %+v\n", locale)
         locales = append(locales, *locale)
       case "defaultLocale":
         fmt.Println("Parsing defaultlocale manifest ...")
         err = yaml.Unmarshal(yamlFile, defaultlocale)
         if err != nil {
           fmt.Printf("unmarshal defaultlocale err   #%v ", err)
+        } else {
+          fmt.Println("  Successfully unmarshalled defaultlocale")
         }
-        fmt.Printf("unmarshalled defaultlocale %+v\n", defaultlocale)
       default:
     }
   }
@@ -203,19 +215,15 @@ func GetLocaleByName (locales []Locale, localename string) *Locale {
   return nil
 }
 
-func ParseFileAsBaseManifest (path string) *BaseManifest {
+func ParseFileAsBaseManifest (path string) (*BaseManifest, error) {
+  manifest := &BaseManifest{}
   yamlFile, err := ioutil.ReadFile(path)
   if err != nil {
-    fmt.Printf("yamlFile.Get err   #%v ", err)
+    return manifest, err
   }
 
-  manifest := &BaseManifest{}
   err = yaml.Unmarshal(yamlFile, manifest)
-  if err != nil {
-    fmt.Printf("Unmarshal: %v", err)
-  }
-
-  return manifest
+  return manifest, err
 }
 
 func ParseManifestFile (path string) *Manifest {
