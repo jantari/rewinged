@@ -1,12 +1,10 @@
 # rewinged
 
-This is a work-in-progress, experimental implementation of the winget source REST API to allow self-hosting winget repositories.
+rewinged is a work-in-progress, experimental implementation of the winget source REST API.
 
-I'm also using it as an opportunity to learn some go.
+It allows to easily self-host winget package repositories.
 
-winget-cli-restsource: https://github.com/microsoft/winget-cli-restsource
-
-winget restsource API: https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml
+I'm also using it as an opportunity to learn some Go.
 
 ### Using a local rewinged instance as a package source
 
@@ -37,3 +35,9 @@ Successfully installed
 ~ took 8s
 ❯
 ```
+
+### Helpful reference documentation
+
+winget-cli-restsource: https://github.com/microsoft/winget-cli-restsource
+
+winget restsource API: https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml

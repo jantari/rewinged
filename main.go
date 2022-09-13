@@ -20,8 +20,8 @@ func main() {
     fmt.Println("Hello world")
 
     var manifests = make(map[string][]Versions)
-    //manifests = GetManifests("./packages")
-    manifests = GetManifests("./winget-pkgs/manifests")
+    manifests = GetManifests("./packages")
+    //manifests = GetManifests("./winget-pkgs/manifests")
     fmt.Println("Found", len(manifests), "package manifests.")
 
     router := gin.Default()
