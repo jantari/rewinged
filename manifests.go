@@ -12,8 +12,11 @@ import (
   //"github.com/mitchellh/mapstructure"
 )
 
-func GetManifests (path string) []Manifest {
-  var manifests = []Manifest{}
+func GetManifests (path string) map[string][]Versions {
+  // global map accumulating all manifests parsed
+  var manifests = make(map[string][]Versions)
+  // temporary map collecting all files belonging to a particular
+  // packageidentifier + PackageVersion combination for later processing
   var nonSingletonsMap = make(map[string][]string)
 
   files, err := os.ReadDir(path)
@@ -25,7 +28,9 @@ func GetManifests (path string) []Manifest {
     fmt.Printf("Path: %s IsDir: %v\n", path + "/" + file.Name(), file.IsDir())
     if file.IsDir() {
       var manifests_from_dir = GetManifests(path + "/" + file.Name())
-      manifests = append(manifests, manifests_from_dir...)
+      for k, v := range manifests_from_dir {
+        manifests[k] = append(manifests[k], v...)
+      }
     } else {
       if strings.HasSuffix(file.Name(), ".yml") || strings.HasSuffix(file.Name(), ".yaml") {
         var basemanifest, err = ParseFileAsBaseManifest(path + "/" + file.Name())
@@ -37,7 +42,7 @@ func GetManifests (path string) []Manifest {
 
         if basemanifest.ManifestType == "singleton" {
           var manifest = ParseManifestFile(path + "/" + file.Name())
-          manifests = append(manifests, *manifest)
+          manifests[manifest.PackageIdentifier] = append(manifests[manifest.PackageIdentifier], manifest.Versions...)
         } else {
           nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
             append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
@@ -50,12 +55,12 @@ func GetManifests (path string) []Manifest {
     fmt.Println("  There are multi-file manifests in this directory")
     fmt.Printf("%+v\n", nonSingletonsMap)
     for key, value := range nonSingletonsMap {
-      fmt.Println("    Merging manifest for package", key)
+      fmt.Println("    Merging manifests for package", key)
       var merged_manifest, err = ParseMultiFileManifest(value...)
       if err != nil {
         fmt.Println("    Could not parse the manifest files for this package", err)
       } else {
-        manifests = append(manifests, *merged_manifest)
+        manifests[merged_manifest.PackageIdentifier] = append(manifests[merged_manifest.PackageIdentifier], merged_manifest.Versions...)
       }
     }
   }
@@ -361,11 +366,11 @@ func findField(v interface{}, name string) reflect.Value {
 }
 
 
-func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Manifest {
-  var manifestResultsMap = make(map[string][]Manifest)
+func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
+  var manifestResultsMap = make(map[string][]Versions)
 
   NEXT_MANIFEST:
-  for _, manifest := range manifests {
+  for packageIdentifier, packageVersions := range manifests {
     // From what I can gather from https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/CosmosDataStore.cs#L452
     // the difference between inclusions and filters are that inclusions are evaluated with a logical OR (only one of them has to match) and filters are evaluated with a logical AND
     // (all filter specified have to match) - so this is what I implemented here. But I am not 100% sure this is the correct/intended use for inclusions vs. filters.
@@ -378,10 +383,10 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
         case NormalizedPackageNameAndPublisher:
           // winget only ever sends the package / software name, the publisher isn't included so to
           // enable proper matching we also only compare against the normalized packagename.
-          requestMatchValue = strings.ReplaceAll(strings.ToLower(manifest.Versions[0].DefaultLocale.PackageName), " ", "")
+          requestMatchValue = strings.ReplaceAll(strings.ToLower(packageVersions[0].DefaultLocale.PackageName), " ", "")
         case PackageIdentifier:
           // We don't need to recursively search for this field, it's easy to get to
-          requestMatchValue = manifest.PackageIdentifier
+          requestMatchValue = packageIdentifier
         case PackageName:
           fallthrough
         case Moniker:
@@ -400,7 +405,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           // Just search the whole struct for a field with the right name
           // Get the value of a nested struct field passing in the field name to search for as a string
           // Source: https://stackoverflow.com/a/38407429
-          f := findField(manifest, string(filter.PackageMatchField))
+          f := findField(packageVersions, string(filter.PackageMatchField))
           requestMatchValue = string(f.String())
       }
 
@@ -435,7 +440,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
     }
 
     if len(inclusions) == 0 {
-      manifestResultsMap[manifest.PackageIdentifier] = append(manifestResultsMap[manifest.PackageIdentifier], manifest)
+      manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersions...)
       continue NEXT_MANIFEST
     }
 
@@ -451,10 +456,10 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
         case NormalizedPackageNameAndPublisher:
           // winget only ever sends the package / software name, the publisher isn't included so to
           // enable proper matching we also only compare against the normalized packagename.
-          requestMatchValue = strings.ReplaceAll(strings.ToLower(manifest.Versions[0].DefaultLocale.PackageName), " ", "")
+          requestMatchValue = strings.ReplaceAll(strings.ToLower(packageVersions[0].DefaultLocale.PackageName), " ", "")
         case PackageIdentifier:
           // We don't need to recursively search for this field, it's easy to get to
-          requestMatchValue = manifest.PackageIdentifier
+          requestMatchValue = packageIdentifier
         case PackageName:
           fallthrough
         case Moniker:
@@ -473,7 +478,7 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
           // Just search the whole struct for a field with the right name
           // Get the value of a nested struct field passing in the field name to search for as a string
           // Source: https://stackoverflow.com/a/38407429
-          f := findField(manifest, string(inclusion.PackageMatchField))
+          f := findField(packageVersions, string(inclusion.PackageMatchField))
           requestMatchValue = string(f.String())
       }
 
@@ -515,19 +520,19 @@ func GetPackagesByMatchFilter (manifests []Manifest, inclusions []SearchRequestP
 
     // All filters and inclusions have passed for this manifest, add it to the returned map
     if anyInclusionMatched {
-      fmt.Println("Adding manifest to the results map", manifest.PackageIdentifier)
-      manifestResultsMap[manifest.PackageIdentifier] = append(manifestResultsMap[manifest.PackageIdentifier], manifest)
+      fmt.Println("Adding manifest to the results map", packageIdentifier)
+      manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersions...)
     }
   }
 
   return manifestResultsMap
 }
 
-func GetPackagesByKeyword (manifests []Manifest, keyword string) map[string][]Manifest {
-  var manifestResultsMap = make(map[string][]Manifest)
-  for _, manifest := range manifests {
-    if CaseInsensitiveContains(manifest.Versions[0].DefaultLocale.PackageName, keyword) || CaseInsensitiveContains(manifest.Versions[0].DefaultLocale.ShortDescription, keyword) {
-      manifestResultsMap[manifest.PackageIdentifier] = append(manifestResultsMap[manifest.PackageIdentifier], manifest)
+func GetPackagesByKeyword (manifests map[string][]Versions, keyword string) map[string][]Versions {
+  var manifestResultsMap = make(map[string][]Versions)
+  for k, v := range manifests {
+    if CaseInsensitiveContains(v[0].DefaultLocale.PackageName, keyword) || CaseInsensitiveContains(v[0].DefaultLocale.ShortDescription, keyword) {
+      manifestResultsMap[k] = append(manifestResultsMap[k], v...)
     }
   }
 

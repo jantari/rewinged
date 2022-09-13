@@ -19,8 +19,9 @@ func Must(i interface{}, err error) interface{} {
 func main() {
     fmt.Println("Hello world")
 
-    var manifests = []Manifest{}
-    manifests = GetManifests("./packages")
+    var manifests = make(map[string][]Versions)
+    //manifests = GetManifests("./packages")
+    manifests = GetManifests("./winget-pkgs/manifests")
     fmt.Println("Found", len(manifests), "package manifests.")
 
     router := gin.Default()
@@ -58,7 +59,7 @@ func main() {
             // results is a map where the PackageIdentifier is the key
             // and the values are arrays of manifests with that PackageIdentifier.
             // This means the values will be different versions of the package.
-            var results map[string][]Manifest
+            var results map[string][]Versions
 
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
@@ -72,21 +73,22 @@ func main() {
 
             if len(results) > 0 {
                 for packageId, packageVersions := range results {
+                    fmt.Println("  package", packageId, "with", len(packageVersions), "versions.")
                     var versions []ManifestSearchVersion
 
                     for _, version := range packageVersions {
                         versions = append(versions, ManifestSearchVersion{
-                            PackageVersion: version.Versions[0].PackageVersion,
+                            PackageVersion: version.PackageVersion,
                             Channel: "",
                             PackageFamilyNames: []string{},
-                            ProductCodes: []string{ version.Versions[0].Installers[0].ProductCode },
+                            ProductCodes: []string{ version.Installers[0].ProductCode },
                         })
                     }
 
                     response.Data = append(response.Data, ManifestSearchResponse{
                         PackageIdentifier: packageId,
-                        PackageName: packageVersions[0].Versions[0].DefaultLocale.PackageName,
-                        Publisher: packageVersions[0].Versions[0].DefaultLocale.Publisher,
+                        PackageName: packageVersions[0].DefaultLocale.PackageName,
+                        Publisher: packageVersions[0].DefaultLocale.Publisher,
                         Versions: versions,
                     })
                 }
@@ -110,11 +112,15 @@ func main() {
             Data: nil,
         }
 
-        var pkg = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
-        if pkg != nil {
-            fmt.Println("the package was found!", pkg.PackageIdentifier)
+        //var pkg = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
+        var pkg = manifests[c.Param("package_identifier")]
+        if pkg != nil && len(pkg) > 0 {
+            fmt.Println("the package was found!")
 
-            response.Data = pkg
+            response.Data = &Manifest{
+                PackageIdentifier: c.Param("package_identifier"),
+                Versions: pkg,
+            }
         } else {
             fmt.Println("the package was NOT found!")
         }
