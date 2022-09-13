@@ -157,13 +157,18 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
   return manifest, nil //err
 }
 
-// This function takes a defaultValue for comparison and then two values
-// for comparison. It returns the first non-default value.
-func nonDefault[T comparable] (defaultValue T, optionA T, optionB T) T {
-  if optionA == defaultValue {
+// This function takes two values and returns
+// the one that's not set to its default value.
+func nonDefault[T any] (optionA T, optionB T) T {
+  if isDefault(reflect.ValueOf(optionA)) {
+    fmt.Println("installer didnt't have field set, using value from global manifest property", optionB)
     return optionB
   }
   return optionA
+}
+
+func isDefault(v reflect.Value) bool {
+  return v.IsZero()
 }
 
 // The installers in a manifest can contain 'global' properties
@@ -171,25 +176,22 @@ func nonDefault[T comparable] (defaultValue T, optionA T, optionB T) T {
 // these have to be merged and set on all individual installers.
 func installerManifestToAPIInstallers (instm InstallerManifest) []Installer {
   var apiInstallers []Installer
-  var zeroInstaller Installer = Installer{}
-
-  fmt.Printf("zeroInstaller InstallModes: %+v\n", zeroInstaller.InstallModes)
 
   for _, installer := range instm.Installers {
     apiInstallers = append(apiInstallers, Installer {
       Architecture: installer.Architecture, // Already mandatory per-Installer
-      MinimumOSVersion: nonDefault(zeroInstaller.MinimumOSVersion, installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
-      Platform: installer.Platform, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
-      InstallerType: nonDefault(zeroInstaller.InstallerType, installer.InstallerType, instm.InstallerType),
-      Scope: nonDefault(zeroInstaller.Scope, installer.Scope, instm.Scope),
+      MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
+      Platform: nonDefault(installer.Platform, instm.Platform),
+      InstallerType: nonDefault(installer.InstallerType, instm.InstallerType),
+      Scope: nonDefault(installer.Scope, instm.Scope),
       InstallerUrl: installer.InstallerUrl, // Already mandatory per-Installer
       InstallerSha256: installer.InstallerSha256, // Already mandatory per-Installer
       SignatureSha256: installer.SignatureSha256, // Can only be set per-Installer, impossible to copy from global manifest properties
-      InstallModes: installer.InstallModes, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
-      InstallerSuccessCodes: installer.InstallerSuccessCodes, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
-      ExpectedReturnCodes: installer.ExpectedReturnCodes, // TODO: FIX arrays are not comparable so I cant use the nonDefault function
-      ProductCode: nonDefault(zeroInstaller.ProductCode, installer.ProductCode, instm.ProductCode),
-      ReleaseDate: nonDefault(zeroInstaller.ReleaseDate, installer.ReleaseDate, instm.ReleaseDate),
+      InstallModes: nonDefault(installer.InstallModes, instm.InstallModes),
+      InstallerSuccessCodes: nonDefault(installer.InstallerSuccessCodes, instm.InstallerSuccessCodes),
+      ExpectedReturnCodes: nonDefault(installer.ExpectedReturnCodes, instm.ExpectedReturnCodes),
+      ProductCode: nonDefault(installer.ProductCode, instm.ProductCode),
+      ReleaseDate: nonDefault(installer.ReleaseDate, instm.ReleaseDate),
     })
   }
 
