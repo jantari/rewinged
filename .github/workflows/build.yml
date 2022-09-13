@@ -23,7 +23,7 @@ jobs:
       - name: Staticcheck
         run: |
           go install honnef.co/go/tools/cmd/staticcheck@latest
-          staticccheck .
+          staticcheck .
 
       - name: Build for Linux-amd64
         run: go build -o rewinged_linux_amd64 .
