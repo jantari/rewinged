@@ -383,7 +383,11 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
         case NormalizedPackageNameAndPublisher:
           // winget only ever sends the package / software name, the publisher isn't included so to
           // enable proper matching we also only compare against the normalized packagename.
-          requestMatchValue = strings.ReplaceAll(strings.ToLower(packageVersions[0].DefaultLocale.PackageName), " ", "")
+          requestMatchValue = strings.ReplaceAll(
+            strings.ReplaceAll(
+              strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
+            " ", ""),
+          "-", "")
         case PackageIdentifier:
           // We don't need to recursively search for this field, it's easy to get to
           requestMatchValue = packageIdentifier
@@ -456,7 +460,11 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
         case NormalizedPackageNameAndPublisher:
           // winget only ever sends the package / software name, the publisher isn't included so to
           // enable proper matching we also only compare against the normalized packagename.
-          requestMatchValue = strings.ReplaceAll(strings.ToLower(packageVersions[0].DefaultLocale.PackageName), " ", "")
+          requestMatchValue = strings.ReplaceAll(
+            strings.ReplaceAll(
+              strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
+            " ", ""),
+          "-", "")
         case PackageIdentifier:
           // We don't need to recursively search for this field, it's easy to get to
           requestMatchValue = packageIdentifier

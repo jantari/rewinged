@@ -12,7 +12,7 @@ type BaseManifest struct {
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
-// A singleton manifest can only contain one locale and one installer
+// A singleton manifest can only describe one package version and contain only one locale and one installer
 // Schema: https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.singleton.1.1.0.json
 type SingletonManifest struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
