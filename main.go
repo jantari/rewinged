@@ -35,11 +35,11 @@ func main() {
     router.GET("/packages", func(c *gin.Context) {
         response := new(PackageMultipleResponse)
 
-        var test = Package{
-            PackageIdentifier: "git.git",
+        for k := range manifests {
+            response.Data = append(response.Data, Package{
+                PackageIdentifier: k,
+            })
         }
-
-        response.Data = []Package{test}
 
         fmt.Println(response)
         c.JSON(200, response)
