@@ -28,7 +28,7 @@ func main() {
     router.SetTrustedProxies(nil)
     router.GET("/information", func(c *gin.Context) {
         response := new(Information)
-        response.Data.SourceIdentifier = "testing"
+        response.Data.SourceIdentifier = "rewinged"
         response.Data.ServerSupportedVersions = []string{"1.1.0"}
         c.JSON(200, response)
     })
