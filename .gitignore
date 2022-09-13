@@ -2,4 +2,5 @@
 cert.pem
 server.key
 resource.syso
+winget-pkgs
 
