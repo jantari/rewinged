@@ -388,7 +388,7 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
             // enable proper matching we also only compare against the normalized packagename.
             requestMatchValue = strings.ReplaceAll(
               strings.ReplaceAll(
-                strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
+                strings.ToLower(packageVersion.DefaultLocale.PackageName),
               " ", ""),
             "-", "")
           case PackageIdentifier:
@@ -465,7 +465,7 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
             // enable proper matching we also only compare against the normalized packagename.
             requestMatchValue = strings.ReplaceAll(
               strings.ReplaceAll(
-                strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
+                strings.ToLower(packageVersion.DefaultLocale.PackageName),
               " ", ""),
             "-", "")
           case PackageIdentifier:
