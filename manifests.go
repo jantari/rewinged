@@ -3,7 +3,6 @@ package main
 import (
   "fmt"
   "errors"
-  "io/ioutil"
   "strings"
   "os"
   "reflect"
@@ -71,7 +70,7 @@ func GetManifests (path string) map[string][]Versions {
 //
 func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
   if len(filenames) <= 0 {
-    return nil, errors.New("You must provide at least one filename for reading Values")
+    return nil, errors.New("you must provide at least one filename for reading Values")
   }
 
   var packageidentifier string
@@ -88,7 +87,7 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
     }
     packageidentifier = basemanifest.PackageIdentifier
 
-    yamlFile, err := ioutil.ReadFile(file)
+    yamlFile, err := os.ReadFile(file)
     if err != nil {
       fmt.Printf("yamlFile.Get err   #%v ", err)
     }
@@ -263,7 +262,7 @@ func GetLocaleByName (locales []Locale, localename string) *Locale {
 
 func ParseFileAsBaseManifest (path string) (*BaseManifest, error) {
   manifest := &BaseManifest{}
-  yamlFile, err := ioutil.ReadFile(path)
+  yamlFile, err := os.ReadFile(path)
   if err != nil {
     return manifest, err
   }
@@ -273,7 +272,7 @@ func ParseFileAsBaseManifest (path string) (*BaseManifest, error) {
 }
 
 func ParseManifestFile (path string) *Manifest {
-  yamlFile, err := ioutil.ReadFile(path)
+  yamlFile, err := os.ReadFile(path)
   if err != nil {
     fmt.Printf("yamlFile.Get err   #%v ", err)
   }

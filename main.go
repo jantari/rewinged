@@ -114,7 +114,7 @@ func main() {
 
         //var pkg = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
         var pkg = manifests[c.Param("package_identifier")]
-        if pkg != nil && len(pkg) > 0 {
+        if len(pkg) > 0 {
             fmt.Println("the package was found!")
 
             response.Data = &Manifest{
