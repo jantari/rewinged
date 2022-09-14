@@ -368,6 +368,7 @@ func findField(v interface{}, name string) reflect.Value {
 
 func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
   var manifestResultsMap = make(map[string][]Versions)
+  normalizeReplacer := strings.NewReplacer(" ", "", "-", "", "+", "")
 
   for packageIdentifier, packageVersions := range manifests {
     // Loop through every version of the package as well because MatchFields like
@@ -386,11 +387,7 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
           case NormalizedPackageNameAndPublisher:
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
-            requestMatchValue = strings.ReplaceAll(
-              strings.ReplaceAll(
-                strings.ToLower(packageVersion.DefaultLocale.PackageName),
-              " ", ""),
-            "-", "")
+            requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.DefaultLocale.PackageName))
           case PackageIdentifier:
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
@@ -463,11 +460,7 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
           case NormalizedPackageNameAndPublisher:
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
-            requestMatchValue = strings.ReplaceAll(
-              strings.ReplaceAll(
-                strings.ToLower(packageVersion.DefaultLocale.PackageName),
-              " ", ""),
-            "-", "")
+            requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.DefaultLocale.PackageName))
           case PackageIdentifier:
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
