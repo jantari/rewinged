@@ -542,9 +542,11 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
 
 func GetPackagesByKeyword (manifests map[string][]Versions, keyword string) map[string][]Versions {
   var manifestResultsMap = make(map[string][]Versions)
-  for k, v := range manifests {
-    if CaseInsensitiveContains(v[0].DefaultLocale.PackageName, keyword) || CaseInsensitiveContains(v[0].DefaultLocale.ShortDescription, keyword) {
-      manifestResultsMap[k] = append(manifestResultsMap[k], v...)
+  for packageIdentifier, packageVersions := range manifests {
+    for _, version := range packageVersions {
+      if CaseInsensitiveContains(version.DefaultLocale.PackageName, keyword) || CaseInsensitiveContains(version.DefaultLocale.ShortDescription, keyword) {
+        manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], version)
+      }
     }
   }
 
