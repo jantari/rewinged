@@ -369,167 +369,171 @@ func findField(v interface{}, name string) reflect.Value {
 func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
   var manifestResultsMap = make(map[string][]Versions)
 
-  NEXT_MANIFEST:
   for packageIdentifier, packageVersions := range manifests {
-    // From what I can gather from https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/CosmosDataStore.cs#L452
-    // the difference between inclusions and filters are that inclusions are evaluated with a logical OR (only one of them has to match) and filters are evaluated with a logical AND
-    // (all filter specified have to match) - so this is what I implemented here. But I am not 100% sure this is the correct/intended use for inclusions vs. filters.
+    // Loop through every version of the package as well because MatchFields like
+    // ProductCode, PackageName etc. can change between versions.
+    NEXT_VERSION:
+    for _, packageVersion := range packageVersions {
+      // From what I can gather from https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/CosmosDataStore.cs#L452
+      // the difference between inclusions and filters are that inclusions are evaluated with a logical OR (only one of them has to match) and filters are evaluated with a logical AND
+      // (all filter specified have to match) - so this is what I implemented here. But I am not 100% sure this is the correct/intended use for inclusions vs. filters.
 
-    // process filters (if any)
-    for _, filter := range filters {
-      var requestMatchValue string
+      // process filters (if any)
+      for _, filter := range filters {
+        var requestMatchValue string
 
-      switch filter.PackageMatchField {
-        case NormalizedPackageNameAndPublisher:
-          // winget only ever sends the package / software name, the publisher isn't included so to
-          // enable proper matching we also only compare against the normalized packagename.
-          requestMatchValue = strings.ReplaceAll(
-            strings.ReplaceAll(
-              strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
-            " ", ""),
-          "-", "")
-        case PackageIdentifier:
-          // We don't need to recursively search for this field, it's easy to get to
-          requestMatchValue = packageIdentifier
-        case PackageName:
-          fallthrough
-        case Moniker:
-          fallthrough
-        case Command:
-          fallthrough
-        case Tag:
-          fallthrough
-        case PackageFamilyName:
-          fallthrough
-        case ProductCode:
-          fallthrough
-        case Market:
-          fallthrough
-        default:
-          // Just search the whole struct for a field with the right name
-          // Get the value of a nested struct field passing in the field name to search for as a string
-          // Source: https://stackoverflow.com/a/38407429
-          f := findField(packageVersions, string(filter.PackageMatchField))
-          requestMatchValue = string(f.String())
+        switch filter.PackageMatchField {
+          case NormalizedPackageNameAndPublisher:
+            // winget only ever sends the package / software name, the publisher isn't included so to
+            // enable proper matching we also only compare against the normalized packagename.
+            requestMatchValue = strings.ReplaceAll(
+              strings.ReplaceAll(
+                strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
+              " ", ""),
+            "-", "")
+          case PackageIdentifier:
+            // We don't need to recursively search for this field, it's easy to get to
+            requestMatchValue = packageIdentifier
+          case PackageName:
+            fallthrough
+          case Moniker:
+            fallthrough
+          case Command:
+            fallthrough
+          case Tag:
+            fallthrough
+          case PackageFamilyName:
+            fallthrough
+          case ProductCode:
+            fallthrough
+          case Market:
+            fallthrough
+          default:
+            // Just search the whole struct for a field with the right name
+            // Get the value of a nested struct field passing in the field name to search for as a string
+            // Source: https://stackoverflow.com/a/38407429
+            f := findField(packageVersion, string(filter.PackageMatchField))
+            requestMatchValue = string(f.String())
+        }
+
+        // Because all filters (if any) must match (logical AND)
+        // we just skip to the next packageversion if any did not match
+        switch filter.RequestMatch.MatchType {
+          // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
+          // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
+          case Exact:
+            if requestMatchValue != filter.RequestMatch.KeyWord {
+              continue NEXT_VERSION
+            }
+          case CaseInsensitive:
+            if !strings.EqualFold(requestMatchValue, filter.RequestMatch.KeyWord) {
+              continue NEXT_VERSION
+            }
+          case StartsWith:
+            // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
+            // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
+            if !strings.HasPrefix(requestMatchValue, filter.RequestMatch.KeyWord) {
+              continue NEXT_VERSION
+            }
+          case Substring:
+            // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
+            // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
+            if !CaseInsensitiveContains(requestMatchValue, filter.RequestMatch.KeyWord) {
+              continue NEXT_VERSION
+            }
+          default:
+            // Unimplemented: Wildcard, Fuzzy, FuzzySubstring
+        }
       }
 
-      // Because all filters (if any) must match (logical AND)
-      // we just skip to the next manifest if any did not match
-      switch filter.RequestMatch.MatchType {
-        // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
-        // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
-        case Exact:
-          if requestMatchValue != filter.RequestMatch.KeyWord {
-            continue NEXT_MANIFEST
-          }
-        case CaseInsensitive:
-          if !strings.EqualFold(requestMatchValue, filter.RequestMatch.KeyWord) {
-            continue NEXT_MANIFEST
-          }
-        case StartsWith:
-          // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
-          // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
-          if !strings.HasPrefix(requestMatchValue, filter.RequestMatch.KeyWord) {
-            continue NEXT_MANIFEST
-          }
-        case Substring:
-          // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
-          // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
-          if !CaseInsensitiveContains(requestMatchValue, filter.RequestMatch.KeyWord) {
-            continue NEXT_MANIFEST
-          }
-        default:
-          // Unimplemented: Wildcard, Fuzzy, FuzzySubstring
-      }
-    }
-
-    if len(inclusions) == 0 {
-      manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersions...)
-      continue NEXT_MANIFEST
-    }
-
-    var anyInclusionMatched bool
-    anyInclusionMatched = true
-    // process inclusions (if any)
-    NEXT_INCLUSION:
-    for _, inclusion := range inclusions {
-      var requestMatchValue string
-      anyInclusionMatched = false
-
-      switch inclusion.PackageMatchField {
-        case NormalizedPackageNameAndPublisher:
-          // winget only ever sends the package / software name, the publisher isn't included so to
-          // enable proper matching we also only compare against the normalized packagename.
-          requestMatchValue = strings.ReplaceAll(
-            strings.ReplaceAll(
-              strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
-            " ", ""),
-          "-", "")
-        case PackageIdentifier:
-          // We don't need to recursively search for this field, it's easy to get to
-          requestMatchValue = packageIdentifier
-        case PackageName:
-          fallthrough
-        case Moniker:
-          fallthrough
-        case Command:
-          fallthrough
-        case Tag:
-          fallthrough
-        case PackageFamilyName:
-          fallthrough
-        case ProductCode:
-          fallthrough
-        case Market:
-          fallthrough
-        default:
-          // Just search the whole struct for a field with the right name
-          // Get the value of a nested struct field passing in the field name to search for as a string
-          // Source: https://stackoverflow.com/a/38407429
-          f := findField(packageVersions, string(inclusion.PackageMatchField))
-          requestMatchValue = string(f.String())
+      if len(inclusions) == 0 {
+        manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersion)
+        continue NEXT_VERSION
       }
 
-      switch inclusion.RequestMatch.MatchType {
-        // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
-        // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
-        case Exact:
-          if requestMatchValue == inclusion.RequestMatch.KeyWord {
-            // Break out of the inclusions loop after one successful match
-            anyInclusionMatched = true
-            break NEXT_INCLUSION
-          }
-        case CaseInsensitive:
-          if strings.EqualFold(requestMatchValue, inclusion.RequestMatch.KeyWord) {
-            // Break out of the inclusions loop after one successful match
-            anyInclusionMatched = true
-            break NEXT_INCLUSION
-          }
-        case StartsWith:
-          // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
-          // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
-          if strings.HasPrefix(requestMatchValue, inclusion.RequestMatch.KeyWord) {
-            // Break out of the inclusions loop after one successful match
-            anyInclusionMatched = true
-            break NEXT_INCLUSION
-          }
-        case Substring:
-          // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
-          // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
-          if CaseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {
-            // Break out of the inclusions loop after one successful match
-            anyInclusionMatched = true
-            break NEXT_INCLUSION
-          }
-        default:
-          // Unimplemented: Wildcard, Fuzzy, FuzzySubstring
-      }
-    }
+      var anyInclusionMatched bool
+      anyInclusionMatched = true
+      // process inclusions (if any)
+      NEXT_INCLUSION:
+      for _, inclusion := range inclusions {
+        var requestMatchValue string
+        anyInclusionMatched = false
 
-    // All filters and inclusions have passed for this manifest, add it to the returned map
-    if anyInclusionMatched {
-      fmt.Println("Adding manifest to the results map", packageIdentifier)
-      manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersions...)
+        switch inclusion.PackageMatchField {
+          case NormalizedPackageNameAndPublisher:
+            // winget only ever sends the package / software name, the publisher isn't included so to
+            // enable proper matching we also only compare against the normalized packagename.
+            requestMatchValue = strings.ReplaceAll(
+              strings.ReplaceAll(
+                strings.ToLower(packageVersions[0].DefaultLocale.PackageName),
+              " ", ""),
+            "-", "")
+          case PackageIdentifier:
+            // We don't need to recursively search for this field, it's easy to get to
+            requestMatchValue = packageIdentifier
+          case PackageName:
+            fallthrough
+          case Moniker:
+            fallthrough
+          case Command:
+            fallthrough
+          case Tag:
+            fallthrough
+          case PackageFamilyName:
+            fallthrough
+          case ProductCode:
+            fallthrough
+          case Market:
+            fallthrough
+          default:
+            // Just search the whole struct for a field with the right name
+            // Get the value of a nested struct field passing in the field name to search for as a string
+            // Source: https://stackoverflow.com/a/38407429
+            f := findField(packageVersion, string(inclusion.PackageMatchField))
+            requestMatchValue = string(f.String())
+        }
+
+        switch inclusion.RequestMatch.MatchType {
+          // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
+          // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
+          case Exact:
+            if requestMatchValue == inclusion.RequestMatch.KeyWord {
+              // Break out of the inclusions loop after one successful match
+              anyInclusionMatched = true
+              break NEXT_INCLUSION
+            }
+          case CaseInsensitive:
+            if strings.EqualFold(requestMatchValue, inclusion.RequestMatch.KeyWord) {
+              // Break out of the inclusions loop after one successful match
+              anyInclusionMatched = true
+              break NEXT_INCLUSION
+            }
+          case StartsWith:
+            // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
+            // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
+            if strings.HasPrefix(requestMatchValue, inclusion.RequestMatch.KeyWord) {
+              // Break out of the inclusions loop after one successful match
+              anyInclusionMatched = true
+              break NEXT_INCLUSION
+            }
+          case Substring:
+            // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
+            // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
+            if CaseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {
+              // Break out of the inclusions loop after one successful match
+              anyInclusionMatched = true
+              break NEXT_INCLUSION
+            }
+          default:
+            // Unimplemented: Wildcard, Fuzzy, FuzzySubstring
+        }
+      }
+
+      // All filters and inclusions have passed for this manifest, add it to the returned map
+      if anyInclusionMatched {
+        fmt.Println("Adding to the results map:", packageIdentifier, "version", packageVersion.PackageVersion)
+        manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersion)
+      }
     }
   }
 
