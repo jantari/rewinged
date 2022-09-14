@@ -6,22 +6,14 @@ import (
     "fmt"
 
     "github.com/gin-gonic/gin"
-//    "github.com/gin-gonic/gin/binding"
 )
-
-func Must(i interface{}, err error) interface{} {
-    if err != nil {
-        panic(err)
-    }
-    return i
-}
 
 func main() {
     fmt.Println("Hello world")
 
     var manifests = make(map[string][]Versions)
-    manifests = GetManifests("./packages")
-    //manifests = GetManifests("./winget-pkgs/manifests")
+    manifests = getManifests("./packages")
+    //manifests = getManifests("./winget-pkgs/manifests")
     fmt.Println("Found", len(manifests), "package manifests.")
 
     router := gin.Default()
@@ -63,10 +55,10 @@ func main() {
 
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
-                results = GetPackagesByKeyword(manifests, post.Query.KeyWord)
+                results = getPackagesByKeyword(manifests, post.Query.KeyWord)
             } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
                 fmt.Println("advanced search with inclusions[] and/or filters[]")
-                results = GetPackagesByMatchFilter(manifests, post.Inclusions, post.Filters)
+                results = getPackagesByMatchFilter(manifests, post.Inclusions, post.Filters)
             }
 
             fmt.Println("... with", len(results), "results:")
@@ -112,7 +104,6 @@ func main() {
             Data: nil,
         }
 
-        //var pkg = GetPackageByIdentifier(manifests, c.Param("package_identifier"))
         var pkg = manifests[c.Param("package_identifier")]
         if len(pkg) > 0 {
             fmt.Println("the package was found!")

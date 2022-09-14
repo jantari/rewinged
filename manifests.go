@@ -8,10 +8,12 @@ import (
   "reflect"
 
   "gopkg.in/yaml.v3"
-  //"github.com/mitchellh/mapstructure"
 )
 
-func GetManifests (path string) map[string][]Versions {
+// Finds and parses all package manifest files in a directory
+// recursively and returns them as a map of PackageIdentifier
+// and PackageVersions
+func getManifests (path string) map[string][]Versions {
   // global map accumulating all manifests parsed
   var manifests = make(map[string][]Versions)
   // temporary map collecting all files belonging to a particular
@@ -26,13 +28,13 @@ func GetManifests (path string) map[string][]Versions {
   for _, file := range files {
     fmt.Printf("Path: %s IsDir: %v\n", path + "/" + file.Name(), file.IsDir())
     if file.IsDir() {
-      var manifests_from_dir = GetManifests(path + "/" + file.Name())
+      var manifests_from_dir = getManifests(path + "/" + file.Name())
       for k, v := range manifests_from_dir {
         manifests[k] = append(manifests[k], v...)
       }
     } else {
-      if strings.HasSuffix(file.Name(), ".yml") || strings.HasSuffix(file.Name(), ".yaml") {
-        var basemanifest, err = ParseFileAsBaseManifest(path + "/" + file.Name())
+      if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
+        var basemanifest, err = parseFileAsBaseManifest(path + "/" + file.Name())
         if err != nil {
           fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
           continue
@@ -40,7 +42,7 @@ func GetManifests (path string) map[string][]Versions {
         fmt.Printf("  BaseManifest: %+v\n", basemanifest)
 
         if basemanifest.ManifestType == "singleton" {
-          var manifest = ParseManifestFile(path + "/" + file.Name())
+          var manifest = parseManifestFile(path + "/" + file.Name())
           manifests[manifest.PackageIdentifier] = append(manifests[manifest.PackageIdentifier], manifest.Versions...)
         } else {
           nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
@@ -55,7 +57,7 @@ func GetManifests (path string) map[string][]Versions {
     fmt.Printf("%+v\n", nonSingletonsMap)
     for key, value := range nonSingletonsMap {
       fmt.Println("    Merging manifests for package", key)
-      var merged_manifest, err = ParseMultiFileManifest(value...)
+      var merged_manifest, err = parseMultiFileManifest(value...)
       if err != nil {
         fmt.Println("    Could not parse the manifest files for this package", err)
       } else {
@@ -67,8 +69,7 @@ func GetManifests (path string) map[string][]Versions {
   return manifests
 }
 
-//
-func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
+func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
   if len(filenames) <= 0 {
     return nil, errors.New("you must provide at least one filename for reading Values")
   }
@@ -80,7 +81,7 @@ func ParseMultiFileManifest (filenames ...string) (*Manifest, error) {
   defaultlocale := &DefaultLocaleManifest{}
 
   for _, file := range filenames {
-    var basemanifest, err = ParseFileAsBaseManifest(file)
+    var basemanifest, err = parseFileAsBaseManifest(file)
     if err != nil {
       fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, skipping", file, err)
       continue
@@ -249,18 +250,7 @@ func localeManifestToAPILocale (locm LocaleManifest) *Locale {
   }
 }
 
-func GetLocaleByName (locales []Locale, localename string) *Locale {
-  fmt.Println("GetLocaleByName: looking for the locale", localename, "in", len(locales), "total locales")
-  for _, locale := range locales {
-    if locale.PackageLocale == localename {
-      return &locale
-    }
-  }
-
-  return nil
-}
-
-func ParseFileAsBaseManifest (path string) (*BaseManifest, error) {
+func parseFileAsBaseManifest (path string) (*BaseManifest, error) {
   manifest := &BaseManifest{}
   yamlFile, err := os.ReadFile(path)
   if err != nil {
@@ -271,7 +261,7 @@ func ParseFileAsBaseManifest (path string) (*BaseManifest, error) {
   return manifest, err
 }
 
-func ParseManifestFile (path string) *Manifest {
+func parseManifestFile (path string) *Manifest {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
     fmt.Printf("yamlFile.Get err   #%v ", err)
@@ -283,12 +273,12 @@ func ParseManifestFile (path string) *Manifest {
     fmt.Printf("Unmarshal singleton error: %v", err)
   }
 
-  manifest := SingletonToStandardManifest(singleton)
+  manifest := singletonToStandardManifest(singleton)
 
   return manifest
 }
 
-func SingletonToStandardManifest (singleton *SingletonManifest) *Manifest {
+func singletonToStandardManifest (singleton *SingletonManifest) *Manifest {
   manifest := &Manifest {
     PackageIdentifier: singleton.PackageIdentifier,
     Versions: []Versions {
@@ -311,12 +301,12 @@ func SingletonToStandardManifest (singleton *SingletonManifest) *Manifest {
   return manifest
 }
 
-func CaseInsensitiveContains(s, substr string) bool {
+func caseInsensitiveContains(s, substr string) bool {
   s, substr = strings.ToUpper(s), strings.ToUpper(substr)
   return strings.Contains(s, substr)
 }
 
-func CaseInsensitiveHasSuffix(s, substr string) bool {
+func caseInsensitiveHasSuffix(s, substr string) bool {
   s, substr = strings.ToUpper(s), strings.ToUpper(substr)
   return strings.HasSuffix(s, substr)
 }
@@ -365,7 +355,7 @@ func findField(v interface{}, name string) reflect.Value {
 }
 
 
-func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
+func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
   var manifestResultsMap = make(map[string][]Versions)
   normalizeReplacer := strings.NewReplacer(" ", "", "-", "", "+", "")
 
@@ -434,7 +424,7 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
           case Substring:
             // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
-            if !CaseInsensitiveContains(requestMatchValue, filter.RequestMatch.KeyWord) {
+            if !caseInsensitiveContains(requestMatchValue, filter.RequestMatch.KeyWord) {
               continue NEXT_VERSION
             }
           default:
@@ -511,7 +501,7 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
           case Substring:
             // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
-            if CaseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {
+            if caseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {
               // Break out of the inclusions loop after one successful match
               anyInclusionMatched = true
               break NEXT_INCLUSION
@@ -532,27 +522,16 @@ func GetPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
   return manifestResultsMap
 }
 
-func GetPackagesByKeyword (manifests map[string][]Versions, keyword string) map[string][]Versions {
+func getPackagesByKeyword (manifests map[string][]Versions, keyword string) map[string][]Versions {
   var manifestResultsMap = make(map[string][]Versions)
   for packageIdentifier, packageVersions := range manifests {
     for _, version := range packageVersions {
-      if CaseInsensitiveContains(version.DefaultLocale.PackageName, keyword) || CaseInsensitiveContains(version.DefaultLocale.ShortDescription, keyword) {
+      if caseInsensitiveContains(version.DefaultLocale.PackageName, keyword) || caseInsensitiveContains(version.DefaultLocale.ShortDescription, keyword) {
         manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], version)
       }
     }
   }
 
   return manifestResultsMap
-}
-
-func GetPackageByIdentifier (manifests []Manifest, packageidentifier string) *Manifest {
-  for _, manifest := range manifests {
-    if manifest.PackageIdentifier == packageidentifier {
-      fmt.Println("searched ID", packageidentifier, "equals a package:", manifest.PackageIdentifier)
-      return &manifest
-    }
-  }
-
-  return nil
 }
 
