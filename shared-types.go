@@ -34,59 +34,59 @@ type Architecture string
 
 const (
     neutral Architecture = "neutral"
-    x86 = "x86"
-    x64 = "x64"
-    arm = "arm"
-    arm64 = "arm64"
+    x86 Architecture = "x86"
+    x64 Architecture = "x64"
+    arm Architecture = "arm"
+    arm64 Architecture = "arm64"
 )
 
 type InstallerType string
 
 const (
     msix InstallerType = "msix"
-    msi = "msi"
-    appx = "appx"
-    exe = "exe"
-    zip = "zip"
-    inno = "inno"
-    nullsoft = "nullsoft"
-    wix = "wix"
-    burn = "burn"
-    pwa = "pwa"
-    msstore = "msstore"
+    msi InstallerType = "msi"
+    appx InstallerType = "appx"
+    exe InstallerType = "exe"
+    zip InstallerType = "zip"
+    inno InstallerType = "inno"
+    nullsoft InstallerType = "nullsoft"
+    wix InstallerType = "wix"
+    burn InstallerType = "burn"
+    pwa InstallerType = "pwa"
+    msstore InstallerType = "msstore"
 )
 
 type Scope string
 
 const (
     user Scope = "user"
-    machine = "machine"
+    machine Scope = "machine"
 )
 
 type InstallMode string
 
 const (
     interactive InstallMode = "interactive"
-    silent = "silent"
-    silentWithProgress = "silentWithProgress"
+    silent InstallMode = "silent"
+    silentWithProgress InstallMode = "silentWithProgress"
 )
 
 type ReturnResponse string
 
 const (
     packageInUse ReturnResponse = "packageInUse"
-    installInProgress = "installInProgress"
-    fileInUse = "fileInUse"
-    missingDependency = "missingDependency"
-    diskFull = "diskFull"
-    insufficientMemory = "insufficientMemory"
-    noNetwork = "noNetwork"
-    contactSupport = "contactSupport"
-    rebootRequiredToFinish = "rebootRequiredToFinish"
-    rebootRequiredForInstall = "rebootRequiredForInstall"
-    rebootInitiated = "rebootInitiated"
-    cancelledByUser = "cancelledByUser"
-    alreadyInstalled = "alreadyInstalled"
-    downgrade = "downgrade"
-    blockedByPolicy = "blockedByPolicy"
+    installInProgress ReturnResponse = "installInProgress"
+    fileInUse ReturnResponse = "fileInUse"
+    missingDependency ReturnResponse = "missingDependency"
+    diskFull ReturnResponse = "diskFull"
+    insufficientMemory ReturnResponse = "insufficientMemory"
+    noNetwork ReturnResponse = "noNetwork"
+    contactSupport ReturnResponse = "contactSupport"
+    rebootRequiredToFinish ReturnResponse = "rebootRequiredToFinish"
+    rebootRequiredForInstall ReturnResponse = "rebootRequiredForInstall"
+    rebootInitiated ReturnResponse = "rebootInitiated"
+    cancelledByUser ReturnResponse = "cancelledByUser"
+    alreadyInstalled ReturnResponse = "alreadyInstalled"
+    downgrade ReturnResponse = "downgrade"
+    blockedByPolicy ReturnResponse = "blockedByPolicy"
 )

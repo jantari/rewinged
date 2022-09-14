@@ -88,34 +88,34 @@ type Information struct {
 type MatchType string
 
 const (
-    Exact MatchType = "Exact"
-    CaseInsensitive = "CaseInsensitive"
-    StartsWith      = "StartsWith"
-    Substring       = "Substring"
-    Wildcard        = "Wildcard"
-    Fuzzy           = "Fuzzy"
-    FuzzySubstring  = "FuzzySubstring"
+    Exact MatchType           = "Exact"
+    CaseInsensitive MatchType = "CaseInsensitive"
+    StartsWith MatchType      = "StartsWith"
+    Substring MatchType       = "Substring"
+    Wildcard MatchType        = "Wildcard"
+    Fuzzy MatchType           = "Fuzzy"
+    FuzzySubstring MatchType  = "FuzzySubstring"
 )
 
 type PackageMatchField string
 
 const (
     PackageIdentifier PackageMatchField = "PackageIdentifier"
-    PackageName = "PackageName"
-    Moniker = "Moniker"
-    Command = "Command"
-    Tag = "Tag"
-    PackageFamilyName = "PackageFriendlyName"
-    ProductCode = "ProductCode"
-    NormalizedPackageNameAndPublisher = "NormalizedPackageNameAndPublisher"
-    Market = "Market"
+    PackageName PackageMatchField = "PackageName"
+    Moniker PackageMatchField = "Moniker"
+    Command PackageMatchField = "Command"
+    Tag PackageMatchField = "Tag"
+    PackageFamilyName PackageMatchField = "PackageFriendlyName"
+    ProductCode PackageMatchField = "ProductCode"
+    NormalizedPackageNameAndPublisher PackageMatchField = "NormalizedPackageNameAndPublisher"
+    Market PackageMatchField = "Market"
 )
 
 type QueryParameter string
 
 const (
     Version QueryParameter = "Version"
-    Channel = "Channel"
+    Channel QueryParameter = "Channel"
 //    Market = "Market" // Already declared in PackageMatchField enum
 )
 
