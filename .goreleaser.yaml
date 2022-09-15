@@ -30,7 +30,7 @@ builds:
     goamd64: [v1]
 
 archives:
-  format: zip
+  - format: zip
 
 changelog:
   filters:
