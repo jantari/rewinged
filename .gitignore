@@ -1,6 +1,7 @@
 *.exe
 cert.pem
 server.key
+private.key
 resource.syso
 winget-pkgs
 

@@ -4,6 +4,8 @@ package main
 
 import (
     "fmt"
+    "os"
+    "flag"
 
     "github.com/gin-gonic/gin"
 )
@@ -14,7 +16,19 @@ var commit = "unknown"
 var releaseMode = "false"
 
 func main() {
-    fmt.Printf("rewinged %v (commit %v)\n", version, commit)
+    versionFlagPtr := flag.Bool("version", false, "Print the version information and exit")
+
+    tlsEnablePtr := flag.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
+    tlsCertificatePtr := flag.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
+    tlsPrivateKeyPtr := flag.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
+    listenAddrPtr := flag.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
+
+    flag.Parse()
+
+    if *versionFlagPtr {
+        fmt.Printf("rewinged version %v\n\ncommit:\t%v\n", version, commit)
+        os.Exit(0)
+    }
 
     var manifests = make(map[string][]Versions)
     manifests = getManifests("./packages")
@@ -126,5 +140,10 @@ func main() {
 
         c.JSON(200, response)
     })
-    router.RunTLS(":8443", "./cert.pem", "./server.key") // listen and serve on 0.0.0.0:8443 (for windows "localhost:8443")
+
+    if *tlsEnablePtr {
+        router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr)
+    } else {
+        router.Run(*listenAddrPtr)
+    }
 }
