@@ -1,9 +1,11 @@
 project_name: rewinged
 
+before:
+  hooks:
+    - go generate # creates versioninfo resource file used by windows build
+
 builds:
-  - hooks:
-      pre: go generate # creates versioninfo resource file used by windows build
-    ldflags:
+  - ldflags:
       - -s -w # do not include debug symbols in executables
       - -X 'main.version={{.Version}}' # set version information in-program
       - -X 'main.commit={{.ShortCommit}}' # set commit information in-program
