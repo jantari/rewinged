@@ -1,6 +1,11 @@
 name: Build
 
-on: [push]
+# Run when tags are pushed or manually
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
 
 jobs:
   build:
@@ -28,13 +33,11 @@ jobs:
           staticcheck .
 
       - name: Install goversioninfo
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           distribution: goreleaser
           version: latest
