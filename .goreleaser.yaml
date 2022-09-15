@@ -1,20 +1,32 @@
 project_name: rewinged
 
-before:
-  hooks:
-    - go generate # creates versioninfo resource file used by windows build
-
 builds:
-  - ldflags:
+  - id: windows
+    hooks:
+      pre:
+        - go generate # creates versioninfo resource file used by windows build
+      post:
+        - 'rm resource.syso || true' # ensure resource file meant for windows is gone or it leads to 'architecture incompatible' compile error on linux
+    ldflags:
       - -s -w # do not include debug symbols in executables
       - -X 'main.version={{.Version}}' # set version information in-program
       - -X 'main.commit={{.ShortCommit}}' # set commit information in-program
       - -X 'main.releaseMode=true' # set gin to releaseMode
-    goos:
-      - linux
-      - windows
-    goarch:
-      - amd64
+    goos: [windows]
+    goarch: [amd64]
+    goamd64: [v1]
+  - id: linux
+    hooks:
+      pre:
+        - 'rm resource.syso || true' # ensure resource file meant for windows is gone or it leads to 'architecture incompatible' compile error
+    ldflags:
+      - -s -w # do not include debug symbols in executables
+      - -X 'main.version={{.Version}}' # set version information in-program
+      - -X 'main.commit={{.ShortCommit}}' # set commit information in-program
+      - -X 'main.releaseMode=true' # set gin to releaseMode
+    goos: [linux]
+    goarch: [amd64]
+    goamd64: [v1]
 
 release:
   draft: true
