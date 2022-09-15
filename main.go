@@ -8,14 +8,22 @@ import (
     "github.com/gin-gonic/gin"
 )
 
+// These variables are overwritten at compile/link time using -ldflags
+var version = "develop"
+var commit = "unknown"
+var releaseMode = "false"
+
 func main() {
-    fmt.Println("Hello world")
+    fmt.Printf("rewinged %v (commit %v)\n", version, commit)
 
     var manifests = make(map[string][]Versions)
     manifests = getManifests("./packages")
     //manifests = getManifests("./winget-pkgs/manifests")
     fmt.Println("Found", len(manifests), "package manifests.")
 
+    if releaseMode == "true" {
+        gin.SetMode(gin.ReleaseMode)
+    }
     router := gin.Default()
     router.SetTrustedProxies(nil)
     router.GET("/information", func(c *gin.Context) {
