@@ -1,15 +1,15 @@
 {
     "FixedFileInfo": {
         "FileVersion": {
-            "Major": 0,
-            "Minor": 0,
-            "Patch": 1,
+            "Major": {{ .Major }},
+            "Minor": {{ .Minor }},
+            "Patch": {{ .Patch }},
             "Build": 0
         },
         "ProductVersion": {
-            "Major": 0,
-            "Minor": 0,
-            "Patch": 1,
+            "Major": {{ .Major }},
+            "Minor": {{ .Minor }},
+            "Patch": {{ .Patch }},
             "Build": 0
         },
         "FileFlagsMask": "3f",
@@ -22,14 +22,14 @@
         "Comments": "",
         "CompanyName": "",
         "FileDescription": "rewinged",
-        "FileVersion": "0.0.1",
+        "FileVersion": "{{ .Version }}",
         "InternalName": "",
-        "LegalCopyright": "© Copyright 2022 jantari (MIT)",
+        "LegalCopyright": "© Copyright {{ .Year }} jantari (MIT)",
         "LegalTrademarks": "",
         "OriginalFilename": "",
         "PrivateBuild": "",
         "ProductName": "rewinged",
-        "ProductVersion": "0.0.1",
+        "ProductVersion": "{{ .Version }}",
         "SpecialBuild": ""
     },
     "VarFileInfo": {
