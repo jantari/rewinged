@@ -17,6 +17,7 @@ var releaseMode = "false"
 
 func main() {
     versionFlagPtr := flag.Bool("version", false, "Print the version information and exit")
+    packagePathPtr := flag.String("manifestPath", "./packages", "The directory to search for package manifest files")
 
     tlsEnablePtr := flag.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
     tlsCertificatePtr := flag.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
@@ -31,8 +32,7 @@ func main() {
     }
 
     var manifests = make(map[string][]Versions)
-    manifests = getManifests("./packages")
-    //manifests = getManifests("./winget-pkgs/manifests")
+    manifests = getManifests(*packagePathPtr)
     fmt.Println("Found", len(manifests), "package manifests.")
 
     if releaseMode == "true" {
