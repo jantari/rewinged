@@ -7,6 +7,11 @@ on:
     tags:
       - '*'
 
+# Required to publish artifacts, see:
+# https://goreleaser.com/ci/actions/#token-permissions
+permissions:
+  contents: write
+
 jobs:
   build:
     name: build
