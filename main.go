@@ -4,6 +4,7 @@ package main
 
 import (
     "fmt"
+    "log"
     "os"
     "flag"
 
@@ -114,8 +115,7 @@ func main() {
 
             c.JSON(200, response)
         } else {
-            fmt.Println("error deserializing json post body")
-            fmt.Println(err)
+            log.Println("error deserializing json post body %v\n", err)
         }
     })
     router.GET("/packageManifests/:package_identifier", func(c *gin.Context) {

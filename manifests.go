@@ -2,9 +2,10 @@ package main
 
 import (
   "fmt"
+  "log"
+  "os"
   "errors"
   "strings"
-  "os"
   "reflect"
 
   "gopkg.in/yaml.v3"
@@ -22,7 +23,7 @@ func getManifests (path string) map[string][]Versions {
 
   files, err := os.ReadDir(path)
   if err != nil {
-    fmt.Println(err)
+    log.Println(err)
   }
 
   for _, file := range files {
@@ -36,7 +37,7 @@ func getManifests (path string) map[string][]Versions {
       if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
         var basemanifest, err = parseFileAsBaseManifest(path + "/" + file.Name())
         if err != nil {
-          fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
+          log.Printf("error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
           continue
         }
 
@@ -57,7 +58,7 @@ func getManifests (path string) map[string][]Versions {
       fmt.Println("  Found multi-file manifests for package", key)
       var merged_manifest, err = parseMultiFileManifest(value...)
       if err != nil {
-        fmt.Println("  Could not parse the manifest files for this package", err)
+        log.Println("  Could not parse the manifest files for this package", err)
       } else {
         manifests[merged_manifest.PackageIdentifier] = append(manifests[merged_manifest.PackageIdentifier], merged_manifest.Versions...)
       }
@@ -81,41 +82,41 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
   for _, file := range filenames {
     var basemanifest, err = parseFileAsBaseManifest(file)
     if err != nil {
-      fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, skipping", file, err)
+      log.Printf("error unmarshaling YAML file '%v' as BaseManifest: %v, skipping", file, err)
       continue
     }
     packageidentifier = basemanifest.PackageIdentifier
 
     yamlFile, err := os.ReadFile(file)
     if err != nil {
-      fmt.Printf("yamlFile.Get err   #%v ", err)
+      log.Printf("yamlFile.Get err   #%v ", err)
     }
     switch basemanifest.ManifestType {
       case "version":
         version := &VersionManifest{}
         err = yaml.Unmarshal(yamlFile, version)
         if err != nil {
-          fmt.Printf("unmarshal version err   #%v ", err)
+          log.Printf("error unmarshalling version-manifest %v\n", err)
         }
         versions = append(versions, *version)
       case "installer":
         installer := &InstallerManifest{}
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
-          fmt.Printf("unmarshal installer err   #%v ", err)
+          log.Printf("error unmarshalling installer-manifest %v\n", err)
         }
         installers = append(installers, *installer)
       case "locale":
         locale := &LocaleManifest{}
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
-          fmt.Printf("unmarshal locale err   #%v ", err)
+          log.Printf("error unmarshalling locale-manifest %v\n", err)
         }
         locales = append(locales, *locale)
       case "defaultLocale":
         err = yaml.Unmarshal(yamlFile, defaultlocale)
         if err != nil {
-          fmt.Printf("unmarshal defaultlocale err   #%v ", err)
+          log.Printf("error unmarshalling defaultlocale-manifest %v\n", err)
         }
       default:
     }
@@ -249,13 +250,13 @@ func parseFileAsBaseManifest (path string) (*BaseManifest, error) {
 func parseManifestFile (path string) *Manifest {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
-    fmt.Printf("yamlFile.Get err   #%v ", err)
+    log.Printf("error opening yaml file %v\n", err)
   }
 
   singleton := &SingletonManifest{}
   err = yaml.Unmarshal(yamlFile, singleton)
   if err != nil {
-    fmt.Printf("Unmarshal singleton error: %v", err)
+    log.Printf("error unmarshalling singleton %v\n", err)
   }
 
   manifest := singletonToStandardManifest(singleton)
