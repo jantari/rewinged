@@ -114,9 +114,9 @@ const (
 type QueryParameter string
 
 const (
-    Version QueryParameter = "Version"
-    Channel QueryParameter = "Channel"
-//    Market = "Market" // Already declared in PackageMatchField enum
+    QueryParameterVersion QueryParameter = "Version"
+    QueryParameterChannel QueryParameter = "Channel"
+    QueryParameterMarket QueryParameter = "Market"
 )
 
 type SearchRequestMatch struct {

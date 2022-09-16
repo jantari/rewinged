@@ -61,9 +61,6 @@ func main() {
         fmt.Println(response)
         c.JSON(200, response)
     })
-    router.POST("/packages", func(c *gin.Context) {
-        //
-    })
     router.POST("/manifestSearch", func(c *gin.Context) {
         var post ManifestSearch
         if err := c.BindJSON(&post); err == nil {
@@ -109,11 +106,12 @@ func main() {
                         Versions: versions,
                     })
                 }
+                fmt.Printf("%+v\n", response)
+                c.JSON(200, response)
+            } else {
+                // winget REST-API specification calls for a 204 return code if no results were found
+                c.JSON(204, response)
             }
-
-            fmt.Printf("%+v\n", response)
-
-            c.JSON(200, response)
         } else {
             log.Println("error deserializing json post body %v\n", err)
         }
@@ -136,11 +134,15 @@ func main() {
                 PackageIdentifier: c.Param("package_identifier"),
                 Versions: pkg,
             }
+
+            c.JSON(200, response)
         } else {
             fmt.Println("the package was NOT found!")
+            c.JSON(404, WingetApiError{
+                ErrorCode: 404,
+                ErrorMessage: "The specified package was not found.",
+            })
         }
-
-        c.JSON(200, response)
     })
 
     if *tlsEnablePtr {
