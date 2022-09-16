@@ -146,8 +146,12 @@ func main() {
     })
 
     if *tlsEnablePtr {
-        router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr)
+        if err := router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr); err != nil {
+            log.Fatal("error could not start webserver:", err)
+        }
     } else {
-        router.Run(*listenAddrPtr)
+        if err := router.Run(*listenAddrPtr); err != nil {
+            log.Fatal("error could not start webserver:", err)
+        }
     }
 }
