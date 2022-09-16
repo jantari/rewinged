@@ -11,8 +11,9 @@ import (
 )
 
 // These variables are overwritten at compile/link time using -ldflags
-var version = "develop"
+var version = "development-build"
 var commit = "unknown"
+var compileTime = "unknown"
 var releaseMode = "false"
 
 func main() {
@@ -27,7 +28,7 @@ func main() {
     flag.Parse()
 
     if *versionFlagPtr {
-        fmt.Printf("rewinged version %v\n\ncommit:\t%v\n", version, commit)
+        fmt.Printf("rewinged %v\n\ncommit:\t\t%v\ncompiled:\t%v\n", version, commit, compileTime)
         os.Exit(0)
     }
 

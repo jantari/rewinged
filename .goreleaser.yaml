@@ -12,6 +12,7 @@ builds:
       - -s -w # do not include debug symbols in executables
       - -X 'main.version={{.Version}}' # set version information in-program
       - -X 'main.commit={{.ShortCommit}}' # set commit information in-program
+      - -X 'main.compileTime={{.Date}}' # set timestamp information in-program
       - -X 'main.releaseMode=true' # set gin to releaseMode
     goos: [windows]
     goarch: [amd64]
@@ -24,6 +25,7 @@ builds:
       - -s -w # do not include debug symbols in executables
       - -X 'main.version={{.Version}}' # set version information in-program
       - -X 'main.commit={{.ShortCommit}}' # set commit information in-program
+      - -X 'main.compileTime={{.Date}}' # set timestamp information in-program
       - -X 'main.releaseMode=true' # set gin to releaseMode
     goos: [linux]
     goarch: [amd64]
