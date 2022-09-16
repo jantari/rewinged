@@ -26,8 +26,8 @@ func getManifests (path string) map[string][]Versions {
   }
 
   for _, file := range files {
-    fmt.Printf("Path: %s IsDir: %v\n", path + "/" + file.Name(), file.IsDir())
     if file.IsDir() {
+      fmt.Printf("Searching directory: %s\n", path + "/" + file.Name())
       var manifests_from_dir = getManifests(path + "/" + file.Name())
       for k, v := range manifests_from_dir {
         manifests[k] = append(manifests[k], v...)
@@ -39,10 +39,10 @@ func getManifests (path string) map[string][]Versions {
           fmt.Printf("Error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
           continue
         }
-        fmt.Printf("  BaseManifest: %+v\n", basemanifest)
 
         if basemanifest.ManifestType == "singleton" {
           var manifest = parseManifestFile(path + "/" + file.Name())
+          fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
           manifests[manifest.PackageIdentifier] = append(manifests[manifest.PackageIdentifier], manifest.Versions...)
         } else {
           nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
@@ -53,13 +53,11 @@ func getManifests (path string) map[string][]Versions {
   }
 
   if len(nonSingletonsMap) > 0 {
-    fmt.Println("  There are multi-file manifests in this directory")
-    fmt.Printf("%+v\n", nonSingletonsMap)
     for key, value := range nonSingletonsMap {
-      fmt.Println("    Merging manifests for package", key)
+      fmt.Println("  Found multi-file manifests for package", key)
       var merged_manifest, err = parseMultiFileManifest(value...)
       if err != nil {
-        fmt.Println("    Could not parse the manifest files for this package", err)
+        fmt.Println("  Could not parse the manifest files for this package", err)
       } else {
         manifests[merged_manifest.PackageIdentifier] = append(manifests[merged_manifest.PackageIdentifier], merged_manifest.Versions...)
       }
@@ -94,42 +92,30 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
     }
     switch basemanifest.ManifestType {
       case "version":
-        fmt.Println("Parsing version manifest ...")
         version := &VersionManifest{}
         err = yaml.Unmarshal(yamlFile, version)
         if err != nil {
           fmt.Printf("unmarshal version err   #%v ", err)
-        } else {
-          fmt.Println("  Successfully unmarshalled version")
         }
         versions = append(versions, *version)
       case "installer":
-        fmt.Println("Parsing installer manifest ...")
         installer := &InstallerManifest{}
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
           fmt.Printf("unmarshal installer err   #%v ", err)
-        } else {
-          fmt.Println("  Successfully unmarshalled installer")
         }
         installers = append(installers, *installer)
       case "locale":
-        fmt.Println("Parsing locale manifest ...")
         locale := &LocaleManifest{}
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
           fmt.Printf("unmarshal locale err   #%v ", err)
-        } else {
-          fmt.Println("  Successfully unmarshalled locale")
         }
         locales = append(locales, *locale)
       case "defaultLocale":
-        fmt.Println("Parsing defaultlocale manifest ...")
         err = yaml.Unmarshal(yamlFile, defaultlocale)
         if err != nil {
           fmt.Printf("unmarshal defaultlocale err   #%v ", err)
-        } else {
-          fmt.Println("  Successfully unmarshalled defaultlocale")
         }
       default:
     }
@@ -166,7 +152,6 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
 // the one that's not set to its default value.
 func nonDefault[T any] (optionA T, optionB T) T {
   if isDefault(reflect.ValueOf(optionA)) {
-    fmt.Println("installer didnt't have field set, using value from global manifest property", optionB)
     return optionB
   }
   return optionA

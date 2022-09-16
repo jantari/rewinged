@@ -33,6 +33,7 @@ func main() {
     }
 
     var manifests = make(map[string][]Versions)
+    fmt.Println("Searching for manifests...")
     manifests = getManifests(*packagePathPtr)
     fmt.Println("Found", len(manifests), "package manifests.")
 
