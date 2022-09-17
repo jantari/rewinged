@@ -11,61 +11,78 @@ import (
   "gopkg.in/yaml.v3"
 )
 
+func ingestManifestsWorker() error {
+  for path := range jobs {
+    files, err := os.ReadDir(path)
+    if err != nil {
+      wg.Done()
+      return err
+    }
+
+    // temporary map collecting all files belonging to a particular
+    // packageidentifier + PackageVersion combination for later processing
+    var nonSingletonsMap = make(map[string][]string)
+
+    for _, file := range files {
+      if !file.IsDir() {
+        if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
+          var basemanifest, err = parseFileAsBaseManifest(path + "/" + file.Name())
+          if err != nil {
+            log.Printf("error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
+            continue
+          }
+
+          if basemanifest.ManifestType == "singleton" {
+            var manifest = parseManifestFile(path + "/" + file.Name())
+            fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
+            manifests2.AppendValues(manifest.PackageIdentifier, manifest.Versions)
+          } else {
+            nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
+              append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
+          }
+        }
+      }
+    }
+
+    if len(nonSingletonsMap) > 0 {
+      for key, value := range nonSingletonsMap {
+        fmt.Println("  Found multi-file manifests for package", key)
+        var merged_manifest, err = parseMultiFileManifest(value...)
+        if err != nil {
+          log.Println("  Could not parse the manifest files for this package", err)
+        } else {
+          manifests2.AppendValues(merged_manifest.PackageIdentifier, merged_manifest.Versions)
+        }
+      }
+    }
+
+    wg.Done()
+  }
+
+  return nil
+}
+
 // Finds and parses all package manifest files in a directory
 // recursively and returns them as a map of PackageIdentifier
 // and PackageVersions
-func getManifests (path string) map[string][]Versions {
-  // global map accumulating all manifests parsed
-  var manifests = make(map[string][]Versions)
-  // temporary map collecting all files belonging to a particular
-  // packageidentifier + PackageVersion combination for later processing
-  var nonSingletonsMap = make(map[string][]string)
-
+func getManifests (path string) {
   files, err := os.ReadDir(path)
   if err != nil {
     log.Println(err)
   }
 
+  go func() {
+    wg.Add(1)
+    jobs <- path
+  }()
+
   for _, file := range files {
     if file.IsDir() {
       fmt.Printf("Searching directory: %s\n", path + "/" + file.Name())
-      var manifests_from_dir = getManifests(path + "/" + file.Name())
-      for k, v := range manifests_from_dir {
-        manifests[k] = append(manifests[k], v...)
-      }
-    } else {
-      if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
-        var basemanifest, err = parseFileAsBaseManifest(path + "/" + file.Name())
-        if err != nil {
-          log.Printf("error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
-          continue
-        }
 
-        if basemanifest.ManifestType == "singleton" {
-          var manifest = parseManifestFile(path + "/" + file.Name())
-          fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
-          manifests[manifest.PackageIdentifier] = append(manifests[manifest.PackageIdentifier], manifest.Versions...)
-        } else {
-          nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
-            append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
-        }
-      }
+      getManifests(path + "/" + file.Name())
     }
   }
-
-  if len(nonSingletonsMap) > 0 {
-    for key, value := range nonSingletonsMap {
-      fmt.Println("  Found multi-file manifests for package", key)
-      var merged_manifest, err = parseMultiFileManifest(value...)
-      if err != nil {
-        log.Println("  Could not parse the manifest files for this package", err)
-      } else {
-        manifests[merged_manifest.PackageIdentifier] = append(manifests[merged_manifest.PackageIdentifier], merged_manifest.Versions...)
-      }
-    }
-  }
-
-  return manifests
 }
 
 func parseMultiFileManifest (filenames ...string) (*Manifest, error) {

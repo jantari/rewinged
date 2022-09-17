@@ -7,6 +7,7 @@ import (
     "log"
     "os"
     "flag"
+    "sync"
 
     "github.com/gin-gonic/gin"
 )
@@ -16,6 +17,45 @@ var version = "development-build"
 var commit = "unknown"
 var compileTime = "unknown"
 var releaseMode = "false"
+
+var wg sync.WaitGroup
+var jobs chan string = make(chan string)
+
+// Internal in-memory data store of all manifest data
+type ManifestsStore struct {
+    sync.RWMutex
+    internal map[string][]Versions
+}
+
+func (ms *ManifestsStore) Set(key string, value []Versions) {
+    ms.Lock()
+    ms.internal[key] = value
+    ms.Unlock()
+}
+
+func (ms *ManifestsStore) AppendValues(key string, value []Versions) {
+    ms.Lock()
+    ms.internal[key] = append(ms.internal[key], value...)
+    ms.Unlock()
+}
+
+func (ms *ManifestsStore) Get(key string) (value []Versions) {
+    ms.RLock()
+    result := ms.internal[key]
+    ms.RUnlock()
+    return result
+}
+
+func (ms *ManifestsStore) GetAll() (value map[string][]Versions) {
+    ms.RLock()
+    result := ms.internal
+    ms.RUnlock()
+    return result
+}
+
+var manifests2 = ManifestsStore{
+    internal: make(map[string][]Versions),
+}
 
 func main() {
     versionFlagPtr := flag.Bool("version", false, "Print the version information and exit")
@@ -33,9 +73,20 @@ func main() {
         os.Exit(0)
     }
 
-    var manifests = make(map[string][]Versions)
     fmt.Println("Searching for manifests...")
-    manifests = getManifests(*packagePathPtr)
+    // Start up 10 worker goroutines that can parse in manifest-files from one directory each
+    for w := 1; w <= 6; w++ {
+        go ingestManifestsWorker()
+    }
+
+    getManifests(*packagePathPtr)
+    wg.Wait()
+
+    // I don't know whether this is safe.
+    // if manifests is just a reference-copy of manifests2 then it wouldn't be I think?
+    // But *currently* since live-reload isn't implemented yet, manifests2 won't be written
+    // to after this point so it's safe for now - TODO: only access manifests2 in a thread-safe way
+    var manifests = manifests2.GetAll()
     fmt.Println("Found", len(manifests), "package manifests.")
 
     if releaseMode == "true" {
