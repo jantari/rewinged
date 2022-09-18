@@ -8,8 +8,10 @@ import (
     "os"
     "flag"
     "sync"
+    "path/filepath"
 
     "github.com/gin-gonic/gin"
+    "github.com/rjeczalik/notify" // for live-reload of manifests
 )
 
 // These variables are overwritten at compile/link time using -ldflags
@@ -21,40 +23,57 @@ var releaseMode = "false"
 var wg sync.WaitGroup
 var jobs chan string = make(chan string)
 
+func getMapValues[M ~map[K]V, K comparable, V any](m M) []V {
+    r := make([]V, 0, len(m))
+    for _, v := range m {
+        r = append(r, v)
+    }
+    return r
+}
+
 // Internal in-memory data store of all manifest data
 type ManifestsStore struct {
     sync.RWMutex
-    internal map[string][]Versions
+    internal map[string]map[string]Versions
 }
 
-func (ms *ManifestsStore) Set(key string, value []Versions) {
+func (ms *ManifestsStore) Set(packageidentifier string, packageversion string, value Versions) {
     ms.Lock()
-    ms.internal[key] = value
+    vmap, ok := ms.internal[packageidentifier]
+    if !ok {
+        vmap = make(map[string]Versions)
+        ms.internal[packageidentifier] = vmap
+    }
+    vmap[packageversion] = value
     ms.Unlock()
 }
 
-func (ms *ManifestsStore) AppendValues(key string, value []Versions) {
-    ms.Lock()
-    ms.internal[key] = append(ms.internal[key], value...)
-    ms.Unlock()
-}
-
-func (ms *ManifestsStore) Get(key string) (value []Versions) {
+func (ms *ManifestsStore) GetAllVersions(packageidentifier string) (value []Versions) {
     ms.RLock()
-    result := ms.internal[key]
+    result := getMapValues(ms.internal[packageidentifier])
+    ms.RUnlock()
+    return result
+}
+
+func (ms *ManifestsStore) Get(packageidentifier string, packageversion string) (value Versions) {
+    ms.RLock()
+    result := ms.internal[packageidentifier][packageversion]
     ms.RUnlock()
     return result
 }
 
 func (ms *ManifestsStore) GetAll() (value map[string][]Versions) {
     ms.RLock()
-    result := ms.internal
+    var m = make(map[string][]Versions)
+    for k := range ms.internal {
+        m[k] = getMapValues(ms.internal[k])
+    }
     ms.RUnlock()
-    return result
+    return m
 }
 
-var manifests2 = ManifestsStore{
-    internal: make(map[string][]Versions),
+var manifests = ManifestsStore{
+    internal: make(map[string]map[string]Versions),
 }
 
 func main() {
@@ -86,8 +105,30 @@ func main() {
     // if manifests is just a reference-copy of manifests2 then it wouldn't be I think?
     // But *currently* since live-reload isn't implemented yet, manifests2 won't be written
     // to after this point so it's safe for now - TODO: only access manifests2 in a thread-safe way
-    var manifests = manifests2.GetAll()
-    fmt.Println("Found", len(manifests), "package manifests.")
+    manifests.RLock()
+    fmt.Println("Found", len(manifests.internal), "package manifests.")
+    manifests.RUnlock()
+
+    fmt.Println("Watching manifestPath for changes ...")
+    // Make the channel buffered to ensure no event is dropped. Notify will drop
+    // an event if the receiver is not able to keep up the sending pace.
+    fileEventsChannel := make(chan notify.EventInfo, 1)
+
+    // Recursively listen for Create, Write and Remove events in the manifestPath
+    if err := notify.Watch(*packagePathPtr + "/...", fileEventsChannel, notify.Create, notify.Remove, notify.Write); err != nil {
+        log.Fatal(err)
+    }
+    defer notify.Stop(fileEventsChannel)
+
+    // If an event is received, push its directory-path to the jobs channel
+    go func() {
+      for ei := range fileEventsChannel {
+        //ei := <-c
+        log.Printf("Received event (type %T):\n\t%+v\n", ei, ei)
+        wg.Add(1)
+        jobs <- filepath.Dir(ei.Path())
+      }
+    }()
 
     if releaseMode == "true" {
         gin.SetMode(gin.ReleaseMode)
@@ -103,11 +144,13 @@ func main() {
     router.GET("/packages", func(c *gin.Context) {
         response := new(PackageMultipleResponse)
 
-        for k := range manifests {
+        manifests.RLock()
+        for k := range manifests.internal {
             response.Data = append(response.Data, Package{
                 PackageIdentifier: k,
             })
         }
+        manifests.RUnlock()
 
         fmt.Println(response)
         c.JSON(200, response)
@@ -128,10 +171,10 @@ func main() {
 
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
-                results = getPackagesByKeyword(manifests, post.Query.KeyWord)
+                results = getPackagesByKeyword(manifests.GetAll(), post.Query.KeyWord)
             } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
                 fmt.Println("advanced search with inclusions[] and/or filters[]")
-                results = getPackagesByMatchFilter(manifests, post.Inclusions, post.Filters)
+                results = getPackagesByMatchFilter(manifests.GetAll(), post.Inclusions, post.Filters)
             }
 
             fmt.Println("... with", len(results), "results:")
@@ -177,7 +220,7 @@ func main() {
             Data: nil,
         }
 
-        var pkg = manifests[c.Param("package_identifier")]
+        var pkg []Versions = manifests.GetAllVersions(c.Param("package_identifier"))
         if len(pkg) > 0 {
             fmt.Println("the package was found!")
 

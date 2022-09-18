@@ -35,7 +35,7 @@ func ingestManifestsWorker() error {
           if basemanifest.ManifestType == "singleton" {
             var manifest = parseManifestFile(path + "/" + file.Name())
             fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
-            manifests2.AppendValues(manifest.PackageIdentifier, manifest.Versions)
+            manifests.Set(manifest.PackageIdentifier, basemanifest.PackageVersion, manifest.Versions[0])
           } else {
             nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
               append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
@@ -51,7 +51,10 @@ func ingestManifestsWorker() error {
         if err != nil {
           log.Println("  Could not parse the manifest files for this package", err)
         } else {
-          manifests2.AppendValues(merged_manifest.PackageIdentifier, merged_manifest.Versions)
+          for _, version := range merged_manifest.Versions {
+            // Replace the existing PkgId + PkgVersion entry with this one
+            manifests.Set(merged_manifest.PackageIdentifier, version.PackageVersion, version)
+          }
         }
       }
     }
