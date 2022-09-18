@@ -142,6 +142,14 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
     }
   }
 
+  // It's possible there were no installer or locale manifests or parsing them failed
+  if len(installers) == 0 {
+    return nil, errors.New("package manifests did not contain any (valid) installers")
+  }
+  if len(versions) == 0 {
+    return nil, errors.New("package manifests did not contain any (valid) locales")
+  }
+
   // This transforms the manifest data into the format the API will return.
   // This logic should probably be moved out of this function, so that it returns
   // the full unaltered data from the combined manifests - and restructuring to
