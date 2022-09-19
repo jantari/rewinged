@@ -15,8 +15,9 @@ func ingestManifestsWorker() error {
   for path := range jobs {
     files, err := os.ReadDir(path)
     if err != nil {
+      log.Println("ingestManifestsWorker error", err)
       wg.Done()
-      return err
+      continue
     }
 
     // temporary map collecting all files belonging to a particular
