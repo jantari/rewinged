@@ -75,8 +75,10 @@ func getManifests (path string) {
     log.Println(err)
   }
 
+  // wg.Add() before goroutine, see staticcheck check SA2000 and also
+  // https://stackoverflow.com/questions/65213707/where-to-put-wg-add
+  wg.Add(1)
   go func() {
-    wg.Add(1)
     jobs <- path
   }()
 
