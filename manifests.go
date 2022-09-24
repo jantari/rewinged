@@ -33,13 +33,18 @@ func ingestManifestsWorker() error {
             continue
           }
 
-          if basemanifest.ManifestType == "singleton" {
-            var manifest = parseManifestFile(path + "/" + file.Name())
-            fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
-            manifests.Set(manifest.PackageIdentifier, basemanifest.PackageVersion, manifest.Versions[0])
-          } else {
-            nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
-              append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
+          // There could be other, non winget-manifest YAML files in the manifestPath as well. Skip them.
+          // All valid manifest files must have all basemanifest fields set as they are required by the schema
+          if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
+            basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
+            if basemanifest.ManifestType == "singleton" {
+              var manifest = parseManifestFile(path + "/" + file.Name())
+              fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
+              manifests.Set(manifest.PackageIdentifier, basemanifest.PackageVersion, manifest.Versions[0])
+            } else {
+              nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
+                append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
+            }
           }
         }
       }
