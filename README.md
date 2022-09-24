@@ -19,7 +19,7 @@ I'm also using it as an opportunity to learn some Go.
 
 - ⚠️ Package manifest versions other than 1.1.0 have not been tested
 - ⚠️ Correlation of installed programs and programs in the repository is not perfect (in part due to [this](https://github.com/microsoft/winget-cli-restsource/issues/59) and [this](https://github.com/microsoft/winget-cli-restsource/issues/166))
-- ❌ Live reload of manifests (you currently have to restart rewinged for it to pick up new or changed manifests)
+- ⚠️ Live reload of manifests (works for new and changed manifests, but removals are only picked up on restart)
 - ❌ Authentication (it's currently [not supported by winget](https://github.com/microsoft/winget-cli-restsource/issues/100))
 - 🤔 Probably other stuff? It's work-in-progress - please submit an issue and/or PR if you notice anything!
 
