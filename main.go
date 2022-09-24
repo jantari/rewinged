@@ -110,24 +110,34 @@ func main() {
     manifests.RUnlock()
 
     fmt.Println("Watching manifestPath for changes ...")
-    // Make the channel buffered to ensure no event is dropped. Notify will drop
+    // Make the channel buffered to try and not miss events. Notify will drop
     // an event if the receiver is not able to keep up the sending pace.
-    fileEventsChannel := make(chan notify.EventInfo, 1)
+    fileEventsBuffer := 100
+    fileEventsChannel := make(chan notify.EventInfo, fileEventsBuffer)
 
-    // Recursively listen for Create, Write and Remove events in the manifestPath
-    if err := notify.Watch(*packagePathPtr + "/...", fileEventsChannel, notify.Create, notify.Remove, notify.Write); err != nil {
+    // Recursively listen for Create and Write events in the manifestPath.
+    // Currently not watching for remove / delete events because we couldn't
+    // correlate filenames to packages anyway so there's no way to know which
+    // package is affected by the event.
+    if err := notify.Watch(*packagePathPtr + "/...", fileEventsChannel, notify.Create, notify.Write); err != nil {
         log.Fatal(err)
     }
     defer notify.Stop(fileEventsChannel)
 
     // If an event is received, push its directory-path to the jobs channel
     go func() {
-      for ei := range fileEventsChannel {
-        //ei := <-c
-        log.Printf("Received event (type %T):\n\t%+v\n", ei, ei)
-        wg.Add(1)
-        jobs <- filepath.Dir(ei.Path())
-      }
+        for {
+            // Detect channel overflow
+            if len(fileEventsChannel) == fileEventsBuffer {
+                // If the channel is ever full we are missing events as the notify package drops them at this point
+                log.Println("\x1b[31mEVENTS CHANNEL FULL - WE'RE MISSING EVENTS\x1b[0m")
+            }
+
+            ei := <- fileEventsChannel
+            log.Printf("Received event (type %T):\n\t%+v\n", ei, ei)
+            wg.Add(1)
+            jobs <- filepath.Dir(ei.Path())
+        }
     }()
 
     if releaseMode == "true" {
