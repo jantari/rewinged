@@ -8,6 +8,7 @@ import (
     "os"
     "flag"
     "sync"
+    "time"
     "path/filepath"
 
     "github.com/gin-gonic/gin"
@@ -127,10 +128,21 @@ func main() {
     // If an event is received, push its directory-path to the jobs channel
     go func() {
         for {
-            // Detect channel overflow
-            if len(fileEventsChannel) == fileEventsBuffer {
+            // Detect and handle channel overflow
+            // This is a loop because it is possible for the channel to fill up
+            // multiple times in a row if events are flooding in for a prolonged
+            // period of time, thus necessitating further full rescans
+            for len(fileEventsChannel) == fileEventsBuffer {
                 // If the channel is ever full we are missing events as the notify package drops them at this point
-                log.Println("\x1b[31mEVENTS CHANNEL FULL - WE'RE MISSING EVENTS\x1b[0m")
+                log.Println("\x1b[31mfileEventsChannel full - we're missing events - will perform full manifest rescan\x1b[0m")
+                // Wait out the thundering herd - events have been lost anyway
+                time.Sleep(5 * time.Second)
+                // Drop all events to clear the channel, this also enables new events to stream in again
+                CLEAR_CHANNEL: for { select { case <- fileEventsChannel:; default: break CLEAR_CHANNEL } }
+                getManifests(*packagePathPtr)
+                // wait for the synchronous full rescan to finish.
+                // any events accumulated in the meantime will be processed after.
+                wg.Wait()
             }
 
             ei := <- fileEventsChannel
