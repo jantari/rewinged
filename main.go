@@ -261,6 +261,7 @@ func main() {
         }
     })
 
+    fmt.Println("Starting server on", *listenAddrPtr)
     if *tlsEnablePtr {
         if err := router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr); err != nil {
             log.Fatal("error could not start webserver:", err)
