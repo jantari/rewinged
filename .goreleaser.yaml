@@ -41,5 +41,6 @@ changelog:
       - '^(?i)readme:'
 
 release:
+  name_template: "Version {{.Version}}"
   draft: true
 
