@@ -1,5 +1,5 @@
 # builder image to compile the binary
-FROM golang:1.16 as builder
+FROM golang:1.19.1 as builder
 
 WORKDIR $GOPATH/src/rewinged/rewinged/
 COPY . .
@@ -11,7 +11,7 @@ RUN go build -o /tmp/rewinged
 # final image with nothing but the binary
 FROM scratch
 
-COPY --from=builder /tmp/rewinged /rewinged
+COPY --from=builder /tmp/rewinged /bin/rewinged
 
-ENTRYPOINT ["/rewinged"]
+ENTRYPOINT ["/bin/rewinged"]
 
