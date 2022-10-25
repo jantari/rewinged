@@ -9,6 +9,8 @@ import (
   "reflect"
 
   "gopkg.in/yaml.v3"
+
+  "rewinged/models"
 )
 
 func ingestManifestsWorker() error {
@@ -40,7 +42,7 @@ func ingestManifestsWorker() error {
             if basemanifest.ManifestType == "singleton" {
               var manifest = parseManifestFile(path + "/" + file.Name())
               fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
-              manifests.Set(manifest.PackageIdentifier, basemanifest.PackageVersion, manifest.Versions[0])
+              models.Manifests.Set(manifest.PackageIdentifier, basemanifest.PackageVersion, manifest.Versions[0])
             } else {
               nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
                 append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
@@ -59,7 +61,7 @@ func ingestManifestsWorker() error {
         } else {
           for _, version := range merged_manifest.Versions {
             // Replace the existing PkgId + PkgVersion entry with this one
-            manifests.Set(merged_manifest.PackageIdentifier, version.PackageVersion, version)
+            models.Manifests.Set(merged_manifest.PackageIdentifier, version.PackageVersion, version)
           }
         }
       }
@@ -96,16 +98,16 @@ func getManifests (path string) {
   }
 }
 
-func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
+func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
   if len(filenames) <= 0 {
     return nil, errors.New("you must provide at least one filename for reading Values")
   }
 
   var packageidentifier string
-  versions      := []VersionManifest{}
-  installers    := []InstallerManifest{}
-  locales       := []LocaleManifest{}
-  defaultlocale := &DefaultLocaleManifest{}
+  versions      := []models.VersionManifest{}
+  installers    := []models.InstallerManifest{}
+  locales       := []models.LocaleManifest{}
+  defaultlocale := &models.DefaultLocaleManifest{}
 
   for _, file := range filenames {
     var basemanifest, err = parseFileAsBaseManifest(file)
@@ -121,21 +123,21 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
     }
     switch basemanifest.ManifestType {
       case "version":
-        version := &VersionManifest{}
+        version := &models.VersionManifest{}
         err = yaml.Unmarshal(yamlFile, version)
         if err != nil {
           log.Printf("error unmarshalling version-manifest %v\n", err)
         }
         versions = append(versions, *version)
       case "installer":
-        installer := &InstallerManifest{}
+        installer := &models.InstallerManifest{}
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
           log.Printf("error unmarshalling installer-manifest %v\n", err)
         }
         installers = append(installers, *installer)
       case "locale":
-        locale := &LocaleManifest{}
+        locale := &models.LocaleManifest{}
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
           log.Printf("error unmarshalling locale-manifest %v\n", err)
@@ -162,12 +164,12 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
   // This logic should probably be moved out of this function, so that it returns
   // the full unaltered data from the combined manifests - and restructuring to
   // API-format will happen somewhere else
-  var apiLocales []Locale
+  var apiLocales []models.Locale
   for _, locale := range locales {
     apiLocales = append(apiLocales, *localeManifestToAPILocale(locale))
   }
 
-  versions_api := []Versions{
+  versions_api := []models.Versions{
     {
       PackageVersion: versions[0].PackageVersion,
       DefaultLocale: *defaultLocaleManifestToAPIDefaultLocale(*defaultlocale),
@@ -177,7 +179,7 @@ func parseMultiFileManifest (filenames ...string) (*Manifest, error) {
     },
   }
 
-  manifest := &Manifest {
+  manifest := &models.Manifest {
     PackageIdentifier: packageidentifier,
     Versions: versions_api[:],
   }
@@ -201,11 +203,11 @@ func isDefault(v reflect.Value) bool {
 // The installers in a manifest can contain 'global' properties
 // that apply to all individual installers listed. In the API responses
 // these have to be merged and set on all individual installers.
-func installerManifestToAPIInstallers (instm InstallerManifest) []Installer {
-  var apiInstallers []Installer
+func installerManifestToAPIInstallers (instm models.InstallerManifest) []models.Installer {
+  var apiInstallers []models.Installer
 
   for _, installer := range instm.Installers {
-    apiInstallers = append(apiInstallers, Installer {
+    apiInstallers = append(apiInstallers, models.Installer {
       Architecture: installer.Architecture, // Already mandatory per-Installer
       MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
       Platform: nonDefault(installer.Platform, instm.Platform),
@@ -225,8 +227,8 @@ func installerManifestToAPIInstallers (instm InstallerManifest) []Installer {
   return apiInstallers
 }
 
-func defaultLocaleManifestToAPIDefaultLocale (locm DefaultLocaleManifest) *DefaultLocale {
-  return &DefaultLocale{
+func defaultLocaleManifestToAPIDefaultLocale (locm models.DefaultLocaleManifest) *models.DefaultLocale {
+  return &models.DefaultLocale{
     PackageLocale: locm.PackageLocale,
     Publisher: locm.Publisher,
     PublisherUrl: locm.PublisherUrl,
@@ -249,8 +251,8 @@ func defaultLocaleManifestToAPIDefaultLocale (locm DefaultLocaleManifest) *Defau
   }
 }
 
-func localeManifestToAPILocale (locm LocaleManifest) *Locale {
-  return &Locale{
+func localeManifestToAPILocale (locm models.LocaleManifest) *models.Locale {
+  return &models.Locale{
     PackageLocale: locm.PackageLocale,
     Publisher: locm.Publisher,
     PublisherUrl: locm.PublisherUrl,
@@ -272,8 +274,8 @@ func localeManifestToAPILocale (locm LocaleManifest) *Locale {
   }
 }
 
-func parseFileAsBaseManifest (path string) (*BaseManifest, error) {
-  manifest := &BaseManifest{}
+func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
+  manifest := &models.BaseManifest{}
   yamlFile, err := os.ReadFile(path)
   if err != nil {
     return manifest, err
@@ -283,13 +285,13 @@ func parseFileAsBaseManifest (path string) (*BaseManifest, error) {
   return manifest, err
 }
 
-func parseManifestFile (path string) *Manifest {
+func parseManifestFile (path string) *models.Manifest {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
     log.Printf("error opening yaml file %v\n", err)
   }
 
-  singleton := &SingletonManifest{}
+  singleton := &models.SingletonManifest{}
   err = yaml.Unmarshal(yamlFile, singleton)
   if err != nil {
     log.Printf("error unmarshalling singleton %v\n", err)
@@ -300,13 +302,13 @@ func parseManifestFile (path string) *Manifest {
   return manifest
 }
 
-func singletonToStandardManifest (singleton *SingletonManifest) *Manifest {
-  manifest := &Manifest {
+func singletonToStandardManifest (singleton *models.SingletonManifest) *models.Manifest {
+  manifest := &models.Manifest {
     PackageIdentifier: singleton.PackageIdentifier,
-    Versions: []Versions {
+    Versions: []models.Versions {
       {
         PackageVersion: singleton.PackageVersion,
-        DefaultLocale: DefaultLocale {
+        DefaultLocale: models.DefaultLocale {
           PackageLocale: singleton.PackageLocale,
           PackageName: singleton.PackageName,
           Publisher: singleton.Publisher,
@@ -314,7 +316,7 @@ func singletonToStandardManifest (singleton *SingletonManifest) *Manifest {
           License: singleton.License,
         },
         Channel: "",
-        Locales: []Locale{},
+        Locales: []models.Locale{},
         Installers: singleton.Installers[:],
       },
     },
@@ -377,8 +379,8 @@ func findField(v interface{}, name string) reflect.Value {
 }
 
 
-func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
-  var manifestResultsMap = make(map[string][]Versions)
+func getPackagesByMatchFilter (manifests map[string][]models.Versions, inclusions []models.SearchRequestPackageMatchFilter, filters []models.SearchRequestPackageMatchFilter) map[string][]models.Versions {
+  var manifestResultsMap = make(map[string][]models.Versions)
   normalizeReplacer := strings.NewReplacer(" ", "", "-", "", "+", "")
 
   for packageIdentifier, packageVersions := range manifests {
@@ -395,26 +397,26 @@ func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
         var requestMatchValue string
 
         switch filter.PackageMatchField {
-          case NormalizedPackageNameAndPublisher:
+          case models.NormalizedPackageNameAndPublisher:
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
             requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.DefaultLocale.PackageName))
-          case PackageIdentifier:
+          case models.PackageIdentifier:
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
-          case PackageName:
+          case models.PackageName:
             fallthrough
-          case Moniker:
+          case models.Moniker:
             fallthrough
-          case Command:
+          case models.Command:
             fallthrough
-          case Tag:
+          case models.Tag:
             fallthrough
-          case PackageFamilyName:
+          case models.PackageFamilyName:
             fallthrough
-          case ProductCode:
+          case models.ProductCode:
             fallthrough
-          case Market:
+          case models.Market:
             fallthrough
           default:
             // Just search the whole struct for a field with the right name
@@ -429,21 +431,21 @@ func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
         switch filter.RequestMatch.MatchType {
           // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
           // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
-          case Exact:
+          case models.Exact:
             if requestMatchValue != filter.RequestMatch.KeyWord {
               continue NEXT_VERSION
             }
-          case CaseInsensitive:
+          case models.CaseInsensitive:
             if !strings.EqualFold(requestMatchValue, filter.RequestMatch.KeyWord) {
               continue NEXT_VERSION
             }
-          case StartsWith:
+          case models.StartsWith:
             // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if !strings.HasPrefix(requestMatchValue, filter.RequestMatch.KeyWord) {
               continue NEXT_VERSION
             }
-          case Substring:
+          case models.Substring:
             // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if !caseInsensitiveContains(requestMatchValue, filter.RequestMatch.KeyWord) {
@@ -468,26 +470,26 @@ func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
         anyInclusionMatched = false
 
         switch inclusion.PackageMatchField {
-          case NormalizedPackageNameAndPublisher:
+          case models.NormalizedPackageNameAndPublisher:
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
             requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.DefaultLocale.PackageName))
-          case PackageIdentifier:
+          case models.PackageIdentifier:
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
-          case PackageName:
+          case models.PackageName:
             fallthrough
-          case Moniker:
+          case models.Moniker:
             fallthrough
-          case Command:
+          case models.Command:
             fallthrough
-          case Tag:
+          case models.Tag:
             fallthrough
-          case PackageFamilyName:
+          case models.PackageFamilyName:
             fallthrough
-          case ProductCode:
+          case models.ProductCode:
             fallthrough
-          case Market:
+          case models.Market:
             fallthrough
           default:
             // Just search the whole struct for a field with the right name
@@ -500,19 +502,19 @@ func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
         switch inclusion.RequestMatch.MatchType {
           // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
           // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
-          case Exact:
+          case models.Exact:
             if requestMatchValue == inclusion.RequestMatch.KeyWord {
               // Break out of the inclusions loop after one successful match
               anyInclusionMatched = true
               break NEXT_INCLUSION
             }
-          case CaseInsensitive:
+          case models.CaseInsensitive:
             if strings.EqualFold(requestMatchValue, inclusion.RequestMatch.KeyWord) {
               // Break out of the inclusions loop after one successful match
               anyInclusionMatched = true
               break NEXT_INCLUSION
             }
-          case StartsWith:
+          case models.StartsWith:
             // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if strings.HasPrefix(requestMatchValue, inclusion.RequestMatch.KeyWord) {
@@ -520,7 +522,7 @@ func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
               anyInclusionMatched = true
               break NEXT_INCLUSION
             }
-          case Substring:
+          case models.Substring:
             // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if caseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {
@@ -544,8 +546,8 @@ func getPackagesByMatchFilter (manifests map[string][]Versions, inclusions []Sea
   return manifestResultsMap
 }
 
-func getPackagesByKeyword (manifests map[string][]Versions, keyword string) map[string][]Versions {
-  var manifestResultsMap = make(map[string][]Versions)
+func getPackagesByKeyword (manifests map[string][]models.Versions, keyword string) map[string][]models.Versions {
+  var manifestResultsMap = make(map[string][]models.Versions)
   for packageIdentifier, packageVersions := range manifests {
     for _, version := range packageVersions {
       if caseInsensitiveContains(version.DefaultLocale.PackageName, keyword) || caseInsensitiveContains(version.DefaultLocale.ShortDescription, keyword) {

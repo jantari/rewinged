@@ -1,4 +1,4 @@
-package main
+package models
 
 // All of these definitions are based on the v1.1.0 manifest schema specifications:
 // https://github.com/microsoft/winget-cli/tree/master/schemas/JSON/manifests/v1.1.0

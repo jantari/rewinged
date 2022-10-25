@@ -13,6 +13,9 @@ import (
 
     "github.com/gin-gonic/gin"
     "github.com/rjeczalik/notify" // for live-reload of manifests
+
+    "rewinged/models"
+    "rewinged/controllers"
 )
 
 // These variables are overwritten at compile/link time using -ldflags
@@ -23,59 +26,6 @@ var releaseMode = "false"
 
 var wg sync.WaitGroup
 var jobs chan string = make(chan string)
-
-func getMapValues[M ~map[K]V, K comparable, V any](m M) []V {
-    r := make([]V, 0, len(m))
-    for _, v := range m {
-        r = append(r, v)
-    }
-    return r
-}
-
-// Internal in-memory data store of all manifest data
-type ManifestsStore struct {
-    sync.RWMutex
-    internal map[string]map[string]Versions
-}
-
-func (ms *ManifestsStore) Set(packageidentifier string, packageversion string, value Versions) {
-    ms.Lock()
-    vmap, ok := ms.internal[packageidentifier]
-    if !ok {
-        vmap = make(map[string]Versions)
-        ms.internal[packageidentifier] = vmap
-    }
-    vmap[packageversion] = value
-    ms.Unlock()
-}
-
-func (ms *ManifestsStore) GetAllVersions(packageidentifier string) (value []Versions) {
-    ms.RLock()
-    result := getMapValues(ms.internal[packageidentifier])
-    ms.RUnlock()
-    return result
-}
-
-func (ms *ManifestsStore) Get(packageidentifier string, packageversion string) (value Versions) {
-    ms.RLock()
-    result := ms.internal[packageidentifier][packageversion]
-    ms.RUnlock()
-    return result
-}
-
-func (ms *ManifestsStore) GetAll() (value map[string][]Versions) {
-    ms.RLock()
-    var m = make(map[string][]Versions)
-    for k := range ms.internal {
-        m[k] = getMapValues(ms.internal[k])
-    }
-    ms.RUnlock()
-    return m
-}
-
-var manifests = ManifestsStore{
-    internal: make(map[string]map[string]Versions),
-}
 
 func main() {
     versionFlagPtr := flag.Bool("version", false, "Print the version information and exit")
@@ -106,9 +56,7 @@ func main() {
     // if manifests is just a reference-copy of manifests2 then it wouldn't be I think?
     // But *currently* since live-reload isn't implemented yet, manifests2 won't be written
     // to after this point so it's safe for now - TODO: only access manifests2 in a thread-safe way
-    manifests.RLock()
-    fmt.Println("Found", len(manifests.internal), "package manifests.")
-    manifests.RUnlock()
+    fmt.Println("Found", models.Manifests.GetManifestCount(), "package manifests.")
 
     fmt.Println("Watching manifestPath for changes ...")
     // Make the channel buffered to try and not miss events. Notify will drop
@@ -157,46 +105,28 @@ func main() {
     }
     router := gin.Default()
     router.SetTrustedProxies(nil)
-    router.GET("/information", func(c *gin.Context) {
-        response := new(Information)
-        response.Data.SourceIdentifier = "rewinged"
-        response.Data.ServerSupportedVersions = []string{"1.1.0"}
-        c.JSON(200, response)
-    })
-    router.GET("/packages", func(c *gin.Context) {
-        response := new(PackageMultipleResponse)
-
-        manifests.RLock()
-        for k := range manifests.internal {
-            response.Data = append(response.Data, Package{
-                PackageIdentifier: k,
-            })
-        }
-        manifests.RUnlock()
-
-        fmt.Println(response)
-        c.JSON(200, response)
-    })
+    router.GET("/information", controllers.GetInformation)
+    router.GET("/packages", controllers.GetPackages)
     router.POST("/manifestSearch", func(c *gin.Context) {
-        var post ManifestSearch
+        var post models.ManifestSearch
         if err := c.BindJSON(&post); err == nil {
             fmt.Printf("%+v\n", post)
-            response := &ManifestSearchResult{
-                RequiredPackageMatchFields: []PackageMatchField{},
-                Data: []ManifestSearchResponse {},
+            response := &models.ManifestSearchResult{
+                RequiredPackageMatchFields: []models.PackageMatchField{},
+                Data: []models.ManifestSearchResponse {},
             }
 
             // results is a map where the PackageIdentifier is the key
             // and the values are arrays of manifests with that PackageIdentifier.
             // This means the values will be different versions of the package.
-            var results map[string][]Versions
+            var results map[string][]models.Versions
 
             if post.Query.KeyWord != "" {
                 fmt.Println("someone searched the repo for:", post.Query.KeyWord)
-                results = getPackagesByKeyword(manifests.GetAll(), post.Query.KeyWord)
+                results = getPackagesByKeyword(models.Manifests.GetAll(), post.Query.KeyWord)
             } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
                 fmt.Println("advanced search with inclusions[] and/or filters[]")
-                results = getPackagesByMatchFilter(manifests.GetAll(), post.Inclusions, post.Filters)
+                results = getPackagesByMatchFilter(models.Manifests.GetAll(), post.Inclusions, post.Filters)
             }
 
             fmt.Println("... with", len(results), "results:")
@@ -204,10 +134,10 @@ func main() {
             if len(results) > 0 {
                 for packageId, packageVersions := range results {
                     fmt.Println("  package", packageId, "with", len(packageVersions), "versions.")
-                    var versions []ManifestSearchVersion
+                    var versions []models.ManifestSearchVersion
 
                     for _, version := range packageVersions {
-                        versions = append(versions, ManifestSearchVersion{
+                        versions = append(versions, models.ManifestSearchVersion{
                             PackageVersion: version.PackageVersion,
                             Channel: "",
                             PackageFamilyNames: []string{},
@@ -215,7 +145,7 @@ func main() {
                         })
                     }
 
-                    response.Data = append(response.Data, ManifestSearchResponse{
+                    response.Data = append(response.Data, models.ManifestSearchResponse{
                         PackageIdentifier: packageId,
                         PackageName: packageVersions[0].DefaultLocale.PackageName,
                         Publisher: packageVersions[0].DefaultLocale.Publisher,
@@ -236,17 +166,17 @@ func main() {
         fmt.Println("/packageManifests: Someone tried to GET package '", c.Param("package_identifier"), "'")
         fmt.Println("with query params:", c.Request.URL.Query())
 
-        response := ManifestSingleResponse {
-            RequiredQueryParameters: []QueryParameter{},
-            UnsupportedQueryParameters: []QueryParameter{},
+        response := models.ManifestSingleResponse {
+            RequiredQueryParameters: []models.QueryParameter{},
+            UnsupportedQueryParameters: []models.QueryParameter{},
             Data: nil,
         }
 
-        var pkg []Versions = manifests.GetAllVersions(c.Param("package_identifier"))
+        var pkg []models.Versions = models.Manifests.GetAllVersions(c.Param("package_identifier"))
         if len(pkg) > 0 {
             fmt.Println("the package was found!")
 
-            response.Data = &Manifest{
+            response.Data = &models.Manifest{
                 PackageIdentifier: c.Param("package_identifier"),
                 Versions: pkg,
             }
@@ -254,7 +184,7 @@ func main() {
             c.JSON(200, response)
         } else {
             fmt.Println("the package was NOT found!")
-            c.JSON(404, WingetApiError{
+            c.JSON(404, models.WingetApiError{
                 ErrorCode: 404,
                 ErrorMessage: "The specified package was not found.",
             })

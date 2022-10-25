@@ -1,4 +1,4 @@
-package main
+package models
 
 // These types / data structures are used the same by the manifests and the API.
 // This means no conversion is necessary when moving this data between the two.

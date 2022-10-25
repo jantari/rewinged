@@ -1,4 +1,4 @@
-package main
+package models
 
 // All of these definitions are based on the v1.1.0 API specification:
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml
