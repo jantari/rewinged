@@ -1,4 +1,7 @@
+# compiled windows executables
 *.exe
+# compiled linux executable
+/rewinged
 cert.pem
 server.key
 private.key
