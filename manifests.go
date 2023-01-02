@@ -61,7 +61,7 @@ func ingestManifestsWorker() error {
         } else {
           for _, version := range merged_manifest.Versions {
             // Replace the existing PkgId + PkgVersion entry with this one
-            models.Manifests.Set(merged_manifest.PackageIdentifier, version.PackageVersion, version)
+            models.Manifests.Set(merged_manifest.PackageIdentifier, version.GetPackageVersion(), version)
           }
         }
       }
@@ -169,19 +169,19 @@ func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
     apiLocales = append(apiLocales, *localeManifestToAPILocale(locale))
   }
 
-  versions_api := []models.Versions{
-    {
+  versions_api := models.ManifestVersionInterface(
+    models.ManifestVersion_1_1_0{
       PackageVersion: versions[0].PackageVersion,
       DefaultLocale: *defaultLocaleManifestToAPIDefaultLocale(*defaultlocale),
       Channel: "",
       Locales: apiLocales,
       Installers: installerManifestToAPIInstallers(installers[0]),
     },
-  }
+  )
 
   manifest := &models.Manifest {
     PackageIdentifier: packageidentifier,
-    Versions: versions_api[:],
+    Versions: []models.ManifestVersionInterface{ versions_api },
   }
 
   return manifest, nil //err
@@ -305,21 +305,20 @@ func parseManifestFile (path string) *models.Manifest {
 func singletonToStandardManifest (singleton *models.SingletonManifest) *models.Manifest {
   manifest := &models.Manifest {
     PackageIdentifier: singleton.PackageIdentifier,
-    Versions: []models.Versions {
-      {
-        PackageVersion: singleton.PackageVersion,
-        DefaultLocale: models.DefaultLocale {
-          PackageLocale: singleton.PackageLocale,
-          PackageName: singleton.PackageName,
-          Publisher: singleton.Publisher,
-          ShortDescription: singleton.ShortDescription,
-          License: singleton.License,
-        },
-        Channel: "",
-        Locales: []models.Locale{},
-        Installers: singleton.Installers[:],
+    Versions: []models.ManifestVersionInterface{ models.ManifestVersion_1_1_0 {
+      PackageVersion: singleton.PackageVersion,
+      DefaultLocale: models.DefaultLocale {
+        PackageLocale: singleton.PackageLocale,
+        PackageName: singleton.PackageName,
+        Publisher: singleton.Publisher,
+        ShortDescription: singleton.ShortDescription,
+        License: singleton.License,
       },
+      Channel: "",
+      Locales: []models.Locale{},
+      Installers: singleton.Installers[:],
     },
+  },
   }
 
   return manifest

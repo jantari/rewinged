@@ -14,15 +14,15 @@ type Package struct {
 
 type Manifest struct {
     PackageIdentifier string
-    Versions []Versions
+    Versions []ManifestVersionInterface
 }
 
-type Versions struct {
-    PackageVersion string
-    DefaultLocale DefaultLocale
-    Channel string
-    Locales []Locale
-    Installers []Installer
+type ManifestVersionInterface interface {
+    GetDefaultLocalePackageName() string
+    GetDefaultLocalePublisher() string
+    GetDefaultLocaleShortDescription() string
+    GetPackageVersion() string
+    GetInstallerProductCodes() []string
 }
 
 // API Locale schema

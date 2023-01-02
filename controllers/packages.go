@@ -28,7 +28,7 @@ func GetPackage(c *gin.Context) {
     Data: nil,
   }
 
-  var pkg []models.Versions = models.Manifests.GetAllVersions(c.Param("package_identifier"))
+  var pkg []models.ManifestVersionInterface = models.Manifests.GetAllVersions(c.Param("package_identifier"))
   if len(pkg) > 0 {
     fmt.Println("the package was found!")
 
@@ -59,7 +59,7 @@ func SearchForPackage(c *gin.Context) {
     // results is a map where the PackageIdentifier is the key
     // and the values are arrays of manifests with that PackageIdentifier.
     // This means the values will be different versions of the package.
-    var results map[string][]models.Versions
+    var results map[string][]models.ManifestVersionInterface
 
     if post.Query.KeyWord != "" {
       fmt.Println("someone searched the repo for:", post.Query.KeyWord)
@@ -78,17 +78,17 @@ func SearchForPackage(c *gin.Context) {
 
         for _, version := range packageVersions {
           versions = append(versions, models.ManifestSearchVersion{
-            PackageVersion: version.PackageVersion,
+            PackageVersion: version.GetPackageVersion(),
             Channel: "",
             PackageFamilyNames: []string{},
-            ProductCodes: []string{ version.Installers[0].ProductCode },
+            ProductCodes: version.GetInstallerProductCodes(),
           })
         }
 
         response.Data = append(response.Data, models.ManifestSearchResponse{
           PackageIdentifier: packageId,
-          PackageName: packageVersions[0].DefaultLocale.PackageName,
-          Publisher: packageVersions[0].DefaultLocale.Publisher,
+          PackageName: packageVersions[0].GetDefaultLocalePackageName(),
+          Publisher: packageVersions[0].GetDefaultLocalePublisher(),
           Versions: versions,
         })
       }

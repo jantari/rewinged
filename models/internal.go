@@ -66,37 +66,37 @@ func findField(v interface{}, name string) reflect.Value {
 // Internal in-memory data store of all manifest data
 type ManifestsStore struct {
     sync.RWMutex
-    internal map[string]map[string]Versions
+    internal map[string]map[string]ManifestVersionInterface
 }
 
-func (ms *ManifestsStore) Set(packageidentifier string, packageversion string, value Versions) {
+func (ms *ManifestsStore) Set(packageidentifier string, packageversion string, value ManifestVersionInterface) {
     ms.Lock()
     vmap, ok := ms.internal[packageidentifier]
     if !ok {
-        vmap = make(map[string]Versions)
+        vmap = make(map[string]ManifestVersionInterface)
         ms.internal[packageidentifier] = vmap
     }
     vmap[packageversion] = value
     ms.Unlock()
 }
 
-func (ms *ManifestsStore) GetAllVersions(packageidentifier string) (value []Versions) {
+func (ms *ManifestsStore) GetAllVersions(packageidentifier string) (value []ManifestVersionInterface) {
     ms.RLock()
     result := getMapValues(ms.internal[packageidentifier])
     ms.RUnlock()
     return result
 }
 
-func (ms *ManifestsStore) Get(packageidentifier string, packageversion string) (value Versions) {
+func (ms *ManifestsStore) Get(packageidentifier string, packageversion string) (value ManifestVersionInterface) {
     ms.RLock()
     result := ms.internal[packageidentifier][packageversion]
     ms.RUnlock()
     return result
 }
 
-func (ms *ManifestsStore) GetAll() (value map[string][]Versions) {
+func (ms *ManifestsStore) GetAll() (value map[string][]ManifestVersionInterface) {
     ms.RLock()
-    var m = make(map[string][]Versions)
+    var m = make(map[string][]ManifestVersionInterface)
     for k := range ms.internal {
         m[k] = getMapValues(ms.internal[k])
     }
@@ -124,12 +124,12 @@ func (ms *ManifestsStore) GetManifestCount() (value int) {
     return count
 }
 
-func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]Versions {
-  var manifestResultsMap = make(map[string][]Versions)
+func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]ManifestVersionInterface {
+  var manifestResultsMap = make(map[string][]ManifestVersionInterface)
   ms.RLock()
   for packageIdentifier, packageVersions := range ms.internal {
     for _, version := range packageVersions {
-      if caseInsensitiveContains(version.DefaultLocale.PackageName, keyword) || caseInsensitiveContains(version.DefaultLocale.ShortDescription, keyword) {
+      if caseInsensitiveContains(version.GetDefaultLocalePackageName(), keyword) || caseInsensitiveContains(version.GetDefaultLocaleShortDescription(), keyword) {
         manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], version)
       }
     }
@@ -139,8 +139,8 @@ func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]Versions {
   return manifestResultsMap
 }
 
-func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]Versions {
-  var manifestResultsMap = make(map[string][]Versions)
+func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]ManifestVersionInterface {
+  var manifestResultsMap = make(map[string][]ManifestVersionInterface)
   normalizeReplacer := strings.NewReplacer(" ", "", "-", "", "+", "")
 
   ms.RLock()
@@ -161,7 +161,7 @@ func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMat
           case NormalizedPackageNameAndPublisher:
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
-            requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.DefaultLocale.PackageName))
+            requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.GetDefaultLocalePackageName()))
           case PackageIdentifier:
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
@@ -234,7 +234,7 @@ func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMat
           case NormalizedPackageNameAndPublisher:
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
-            requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.DefaultLocale.PackageName))
+            requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.GetDefaultLocalePackageName()))
           case PackageIdentifier:
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
@@ -298,7 +298,7 @@ func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMat
 
       // All filters and inclusions have passed for this manifest, add it to the returned map
       if anyInclusionMatched {
-        fmt.Println("Adding to the results map:", packageIdentifier, "version", packageVersion.PackageVersion)
+        fmt.Println("Adding to the results map:", packageIdentifier, "version", packageVersion.GetPackageVersion())
         manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersion)
       }
     }
@@ -310,6 +310,6 @@ func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMat
 
 // Global variable that will hold all in-memory manifest data
 var Manifests = ManifestsStore{
-    internal: make(map[string]map[string]Versions),
+    internal: make(map[string]map[string]ManifestVersionInterface),
 }
 
