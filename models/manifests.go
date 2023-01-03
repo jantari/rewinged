@@ -22,7 +22,7 @@ type SingletonManifest struct {
     PackageName string `yaml:"PackageName"`
     License string `yaml:"License"`
     ShortDescription string `yaml:"ShortDescription"`
-    Installers [1]Installer `yaml:"Installers"`
+    Installers [1]Installer_1_1_0 `yaml:"Installers"`
     ManifestType string `yaml:"ManifestType"`
     ManifestVersion string `yaml:"ManifestVersion"`
 }
@@ -39,19 +39,19 @@ type VersionManifest struct {
 
 // The struct for a separate installer manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json
-type InstallerManifest struct {
+type InstallerManifest_1_1_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     Channel string `yaml:"Channel" json:",omitempty"`
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`
     Platform []string `yaml:"Platform"`
     MinimumOSVersion string `yaml:"MinimumOSVersion"`
-    InstallerType InstallerType `yaml:"InstallerType"`
+    InstallerType string `yaml:"InstallerType"`
     Scope Scope `yaml:"Scope" json:",omitempty"`
     InstallModes []InstallMode `yaml:"InstallModes" json:",omitempty"`
     InstallerSwitches InstallerSwitches `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
-    ExpectedReturnCodes []ExpectedReturnCode `yaml:"ExpectedReturnCodes" json:",omitempty"`
+    ExpectedReturnCodes []ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes" json:",omitempty"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"` // enum of either install or uninstallPrevious
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
@@ -76,17 +76,17 @@ type InstallerManifest struct {
         DisplayVersion string `yaml:"DisplayVersion" json:",omitempty"`
         ProductCode string `yaml:"ProductCode" json:",omitempty"`
         UpgradeCode string `yaml:"UpgradeCode" json:",omitempty"`
-        InstallerType InstallerType `yaml:"InstallerType" json:",omitempty"`
+        InstallerType string `yaml:"InstallerType" json:",omitempty"`
     } `yaml:"AppsAndFeaturesEntries" json:",omitempty"`
     ElevationRequirement string `yaml:"ElevationRequirement"`
-    Installers []Installer `yaml:"Installers"`
+    Installers []Installer_1_1_0 `yaml:"Installers"`
     ManifestType string `yaml:"ManifestType"`
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
 // The struct for a separate locale manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
-type LocaleManifest struct {
+type LocaleManifest_1_1_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     PackageLocale string `yaml:"PackageLocale"`
@@ -104,7 +104,7 @@ type LocaleManifest struct {
     ShortDescription string `yaml:"ShortDescription"`
     Description string `yaml:"Description"`
     Tags []string `yaml:"Tags"`
-    Agreements []Agreement `yaml:"Agreements"`
+    Agreements []Agreement_1_1_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
@@ -112,7 +112,7 @@ type LocaleManifest struct {
 // The struct for a separate defaultlocale manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
 // It is the same as Locale except with an added Moniker
-type DefaultLocaleManifest struct {
+type DefaultLocaleManifest_1_1_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     PackageLocale string `yaml:"PackageLocale"`
@@ -131,30 +131,7 @@ type DefaultLocaleManifest struct {
     Description string `yaml:"Description"`
     Moniker string `yaml:"Moniker"`
     Tags []string `yaml:"Tags"`
-    Agreements []Agreement `yaml:"Agreements"`
+    Agreements []Agreement_1_1_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
-}
-
-// All properties of this struct are nullable strings, so set omitempty to make responses smaller
-// https://github.com/microsoft/winget-cli/blob/56df5adb2f974230c3db8fb7f84d2fe3150eb859/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json#L88
-type InstallerSwitches struct {
-    Silent string `yaml:"Silent" json:",omitempty"`
-    SilentWithProgress string `yaml:"SilentWithProgress" json:",omitempty"`
-    Interactive string `yaml:"Interactive" json:",omitempty"`
-    InstallLocation string `yaml:"InstallLocation" json:",omitempty"`
-    Log string `yaml:"Log" json:",omitempty"`
-    Upgrade string `yaml:"Upgrade" json:",omitempty"`
-    Custom string `yaml:"Custom" json:",omitempty"`
-}
-
-// https://github.com/microsoft/winget-cli/blob/56df5adb2f974230c3db8fb7f84d2fe3150eb859/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json#L229
-type Dependencies struct {
-    WindowsFeatures []string `yaml:"WindowsFeatures" json:",omitempty"`
-    WindowsLibraries []string `yaml:"WindowsLibraries" json:",omitempty"`
-    PackageDependencies []struct {
-        PackageIdentifier string `yaml:"PackageIdentifier"`
-        MinimumVersion string `yaml:"MinimumVersion"`
-    } `yaml:"PackageDependencies" json:",omitempty"`
-    ExternalDependencies []string `yaml:"ExternalDependencies" json:",omitempty"`
 }

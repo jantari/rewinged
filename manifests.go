@@ -105,9 +105,9 @@ func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
 
   var packageidentifier string
   versions      := []models.VersionManifest{}
-  installers    := []models.InstallerManifest{}
-  locales       := []models.LocaleManifest{}
-  defaultlocale := &models.DefaultLocaleManifest{}
+  installers    := []models.InstallerManifest_1_1_0{}
+  locales       := []models.LocaleManifest_1_1_0{}
+  defaultlocale := &models.DefaultLocaleManifest_1_1_0{}
 
   for _, file := range filenames {
     var basemanifest, err = parseFileAsBaseManifest(file)
@@ -130,14 +130,14 @@ func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
         }
         versions = append(versions, *version)
       case "installer":
-        installer := &models.InstallerManifest{}
+        installer := &models.InstallerManifest_1_1_0{}
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
           log.Printf("error unmarshalling installer-manifest %v\n", err)
         }
         installers = append(installers, *installer)
       case "locale":
-        locale := &models.LocaleManifest{}
+        locale := &models.LocaleManifest_1_1_0{}
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
           log.Printf("error unmarshalling locale-manifest %v\n", err)
@@ -164,7 +164,7 @@ func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
   // This logic should probably be moved out of this function, so that it returns
   // the full unaltered data from the combined manifests - and restructuring to
   // API-format will happen somewhere else
-  var apiLocales []models.Locale
+  var apiLocales []models.Locale_1_1_0
   for _, locale := range locales {
     apiLocales = append(apiLocales, *localeManifestToAPILocale(locale))
   }
@@ -203,11 +203,11 @@ func isDefault(v reflect.Value) bool {
 // The installers in a manifest can contain 'global' properties
 // that apply to all individual installers listed. In the API responses
 // these have to be merged and set on all individual installers.
-func installerManifestToAPIInstallers (instm models.InstallerManifest) []models.Installer {
-  var apiInstallers []models.Installer
+func installerManifestToAPIInstallers (instm models.InstallerManifest_1_1_0) []models.Installer_1_1_0 {
+  var apiInstallers []models.Installer_1_1_0
 
   for _, installer := range instm.Installers {
-    apiInstallers = append(apiInstallers, models.Installer {
+    apiInstallers = append(apiInstallers, models.Installer_1_1_0 {
       Architecture: installer.Architecture, // Already mandatory per-Installer
       MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
       Platform: nonDefault(installer.Platform, instm.Platform),
@@ -227,8 +227,8 @@ func installerManifestToAPIInstallers (instm models.InstallerManifest) []models.
   return apiInstallers
 }
 
-func defaultLocaleManifestToAPIDefaultLocale (locm models.DefaultLocaleManifest) *models.DefaultLocale {
-  return &models.DefaultLocale{
+func defaultLocaleManifestToAPIDefaultLocale (locm models.DefaultLocaleManifest_1_1_0) *models.DefaultLocale_1_1_0 {
+  return &models.DefaultLocale_1_1_0{
     PackageLocale: locm.PackageLocale,
     Publisher: locm.Publisher,
     PublisherUrl: locm.PublisherUrl,
@@ -251,8 +251,8 @@ func defaultLocaleManifestToAPIDefaultLocale (locm models.DefaultLocaleManifest)
   }
 }
 
-func localeManifestToAPILocale (locm models.LocaleManifest) *models.Locale {
-  return &models.Locale{
+func localeManifestToAPILocale (locm models.LocaleManifest_1_1_0) *models.Locale_1_1_0 {
+  return &models.Locale_1_1_0{
     PackageLocale: locm.PackageLocale,
     Publisher: locm.Publisher,
     PublisherUrl: locm.PublisherUrl,
@@ -307,7 +307,7 @@ func singletonToStandardManifest (singleton *models.SingletonManifest) *models.M
     PackageIdentifier: singleton.PackageIdentifier,
     Versions: []models.ManifestVersionInterface{ models.ManifestVersion_1_1_0 {
       PackageVersion: singleton.PackageVersion,
-      DefaultLocale: models.DefaultLocale {
+      DefaultLocale: models.DefaultLocale_1_1_0 {
         PackageLocale: singleton.PackageLocale,
         PackageName: singleton.PackageName,
         Publisher: singleton.Publisher,
@@ -315,7 +315,7 @@ func singletonToStandardManifest (singleton *models.SingletonManifest) *models.M
         License: singleton.License,
       },
       Channel: "",
-      Locales: []models.Locale{},
+      Locales: []models.Locale_1_1_0{},
       Installers: singleton.Installers[:],
     },
   },

@@ -51,9 +51,9 @@ func SearchForPackage(c *gin.Context) {
   var post models.ManifestSearch
   if err := c.BindJSON(&post); err == nil {
     fmt.Printf("%+v\n", post)
-    response := &models.ManifestSearchResult{
+    response := &models.ManifestSearchResult[models.ManifestSearchVersion_1_1_0]{
       RequiredPackageMatchFields: []models.PackageMatchField{},
-      Data: []models.ManifestSearchResponse {},
+      Data: []models.ManifestSearchResponse[models.ManifestSearchVersion_1_1_0] {},
     }
 
     // results is a map where the PackageIdentifier is the key
@@ -74,10 +74,10 @@ func SearchForPackage(c *gin.Context) {
     if len(results) > 0 {
       for packageId, packageVersions := range results {
         fmt.Println("  package", packageId, "with", len(packageVersions), "versions.")
-        var versions []models.ManifestSearchVersion
+        var versions []models.ManifestSearchVersion_1_1_0
 
         for _, version := range packageVersions {
-          versions = append(versions, models.ManifestSearchVersion{
+          versions = append(versions, models.ManifestSearchVersion_1_1_0{
             PackageVersion: version.GetPackageVersion(),
             Channel: "",
             PackageFamilyNames: []string{},
@@ -85,7 +85,7 @@ func SearchForPackage(c *gin.Context) {
           })
         }
 
-        response.Data = append(response.Data, models.ManifestSearchResponse{
+        response.Data = append(response.Data, models.ManifestSearchResponse[models.ManifestSearchVersion_1_1_0]{
           PackageIdentifier: packageId,
           PackageName: packageVersions[0].GetDefaultLocalePackageName(),
           Publisher: packageVersions[0].GetDefaultLocalePublisher(),

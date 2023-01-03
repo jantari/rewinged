@@ -25,54 +25,6 @@ type ManifestVersionInterface interface {
     GetInstallerProductCodes() []string
 }
 
-// API Locale schema
-// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1336
-type Locale struct {
-    PackageLocale string `yaml:"PackageLocale"`
-    Publisher string `yaml:"Publisher"`
-    PublisherUrl string `yaml:"PublisherUrl"`
-    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
-    PrivacyUrl string `yaml:"PrivacyUrl"`
-    Author string `yaml:"Author"`
-    PackageName string `yaml:"PackageName"`
-    PackageUrl string `yaml:"PackageUrl"`
-    License string `yaml:"License"`
-    LicenseUrl string `yaml:"LicenseUrl"`
-    Copyright string `yaml:"Copyright"`
-    CopyrightUrl string `yaml:"CopyrightUrl"`
-    ShortDescription string `yaml:"ShortDescription"`
-    Description string `yaml:"Description"`
-    Tags []string `yaml:"Tags"`
-    Agreements []Agreement `yaml:"Agreements"`
-    ReleaseNotes string `yaml:"ReleaseNotes"`
-    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
-}
-
-// API DefaultLocale schema
-// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1421
-// It is the same as Locale except with an added Moniker
-type DefaultLocale struct {
-    PackageLocale string `yaml:"PackageLocale"`
-    Publisher string `yaml:"Publisher"`
-    PublisherUrl string `yaml:"PublisherUrl"`
-    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
-    PrivacyUrl string `yaml:"PrivacyUrl"`
-    Author string `yaml:"Author"`
-    PackageName string `yaml:"PackageName"`
-    PackageUrl string `yaml:"PackageUrl"`
-    License string `yaml:"License"`
-    LicenseUrl string `yaml:"LicenseUrl"`
-    Copyright string `yaml:"Copyright"`
-    CopyrightUrl string `yaml:"CopyrightUrl"`
-    ShortDescription string `yaml:"ShortDescription"`
-    Description string `yaml:"Description"`
-    Moniker string `yaml:"Moniker"`
-    Tags []string `yaml:"Tags"`
-    Agreements []Agreement `yaml:"Agreements"`
-    ReleaseNotes string `yaml:"ReleaseNotes"`
-    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
-}
-
 type PackageMultipleResponse struct {
     Data []Package
     ContinuationToken string
@@ -137,18 +89,15 @@ type ManifestSearch struct {
     Filters []SearchRequestPackageMatchFilter
 }
 
-type ManifestSearchVersion struct {
-    PackageVersion string
-    Channel string //maxlength: 16, unused
-    PackageFamilyNames []string
-    ProductCodes []string
+type ManifestSearchVersionInterface interface {
+    ManifestSearchVersion_1_1_0 | ManifestSearchVersion_1_4_0
 }
 
-type ManifestSearchResponse struct {
+type ManifestSearchResponse[MSVI ManifestSearchVersionInterface] struct {
     PackageIdentifier string
     PackageName string
     Publisher string
-    Versions []ManifestSearchVersion
+    Versions []MSVI
 }
 
 type ManifestSingleResponse struct {
@@ -157,8 +106,8 @@ type ManifestSingleResponse struct {
     UnsupportedQueryParameters []QueryParameter
 }
 
-type ManifestSearchResult struct {
-    Data []ManifestSearchResponse
+type ManifestSearchResult[MSVI ManifestSearchVersionInterface] struct {
+    Data []ManifestSearchResponse[MSVI]
     RequiredPackageMatchFields []PackageMatchField
     UnsupportedPackageMatchFields []PackageMatchField
 }
