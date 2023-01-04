@@ -3,6 +3,14 @@ package models
 // All of these definitions are based on the v1.1.0 API specification:
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml
 
+type API_Information_1_1_0 struct {
+    Data struct {
+        SourceIdentifier        string
+        ServerSupportedVersions []string
+    }
+}
+
+// API_ManifestVersion_1_1_0 implements all of the ManifestVersionInterface interface methods
 type API_ManifestVersion_1_1_0 struct {
     PackageVersion string
     DefaultLocale DefaultLocale_1_1_0
@@ -10,8 +18,6 @@ type API_ManifestVersion_1_1_0 struct {
     Locales []Locale_1_1_0
     Installers []API_Installer_1_1_0
 }
-
-// API_ManifestVersion_1_1_0 implements all of the ManifestVersionInterface interface methods:
 
 func (ver API_ManifestVersion_1_1_0) GetDefaultLocalePackageName() string {
     return ver.DefaultLocale.PackageName
@@ -42,15 +48,15 @@ func (ver API_ManifestVersion_1_1_0) GetInstallerProductCodes() []string {
 type API_Installer_1_1_0 struct {
     InstallerIdentifier string `yaml:"InstallerIdentifier"`
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`
-    Architecture Architecture `yaml:"Architecture"`
+    Architecture string `yaml:"Architecture"`
     MinimumOSVersion string `yaml:"MinimumOSVersion"`
     Platform []string `yaml:"Platform"`
     InstallerType string `yaml:"InstallerType"`
-    Scope Scope `yaml:"Scope"`
+    Scope string `yaml:"Scope"`
     InstallerUrl string `yaml:"InstallerUrl"`
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
-    InstallModes []InstallMode `yaml:"InstallModes"`
+    InstallModes []string `yaml:"InstallModes"`
     InstallerSwitches InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
     ExpectedReturnCodes []ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes"`
@@ -143,7 +149,7 @@ type DefaultLocale_1_1_0 struct {
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
-type ManifestSearchVersion_1_1_0 struct {
+type API_ManifestSearchVersion_1_1_0 struct {
     PackageVersion string
     Channel string //maxlength: 16, unused
     PackageFamilyNames []string
@@ -174,4 +180,64 @@ type InstallerSwitches_1_1_0 struct {
     Upgrade string `yaml:"Upgrade" json:",omitempty"`
     Custom string `yaml:"Custom" json:",omitempty"`
 }
+
+type API_ManifestSingleResponse_1_1_0 struct {
+    Data *API_Manifest
+    RequiredQueryParameters []API_QueryParameter_1_1_0
+    UnsupportedQueryParameters []API_QueryParameter_1_1_0
+}
+
+type API_SearchRequestMatch_1_1_0 struct {
+    KeyWord string
+    MatchType API_MatchType_1_1_0
+}
+
+type API_SearchRequestPackageMatchFilter_1_1_0 struct {
+    PackageMatchField API_PackageMatchField_1_1_0
+    RequestMatch API_SearchRequestMatch_1_1_0
+}
+
+type API_ManifestSearchRequest_1_1_0 struct {
+    MaximumResults int
+    FetchAllManifests bool
+    Query API_SearchRequestMatch_1_1_0
+    Inclusions []API_SearchRequestPackageMatchFilter_1_1_0
+    Filters []API_SearchRequestPackageMatchFilter_1_1_0
+}
+
+// "Enums":
+
+type API_QueryParameter_1_1_0 string
+
+const (
+    QueryParameterVersion API_QueryParameter_1_1_0 = "Version"
+    QueryParameterChannel API_QueryParameter_1_1_0 = "Channel"
+    QueryParameterMarket API_QueryParameter_1_1_0 = "Market"
+)
+
+type API_MatchType_1_1_0 string
+
+const (
+    Exact API_MatchType_1_1_0           = "Exact"
+    CaseInsensitive API_MatchType_1_1_0 = "CaseInsensitive"
+    StartsWith API_MatchType_1_1_0      = "StartsWith"
+    Substring API_MatchType_1_1_0       = "Substring"
+    Wildcard API_MatchType_1_1_0        = "Wildcard"
+    Fuzzy API_MatchType_1_1_0           = "Fuzzy"
+    FuzzySubstring API_MatchType_1_1_0  = "FuzzySubstring"
+)
+
+type API_PackageMatchField_1_1_0 string
+
+const (
+    PackageIdentifier API_PackageMatchField_1_1_0 = "PackageIdentifier"
+    PackageName API_PackageMatchField_1_1_0 = "PackageName"
+    Moniker API_PackageMatchField_1_1_0 = "Moniker"
+    Command API_PackageMatchField_1_1_0 = "Command"
+    Tag API_PackageMatchField_1_1_0 = "Tag"
+    PackageFamilyName API_PackageMatchField_1_1_0 = "PackageFriendlyName"
+    ProductCode API_PackageMatchField_1_1_0 = "ProductCode"
+    NormalizedPackageNameAndPublisher API_PackageMatchField_1_1_0 = "NormalizedPackageNameAndPublisher"
+    Market API_PackageMatchField_1_1_0 = "Market"
+)
 

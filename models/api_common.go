@@ -3,16 +3,21 @@ package models
 // All of these definitions are based on the v1.1.0 API specification:
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml
 
-type WingetApiError struct {
+type API_WingetApiError struct {
     ErrorCode    int
     ErrorMessage string
 }
 
-type Package struct {
+type API_Package struct {
     PackageIdentifier string
 }
 
-type Manifest struct {
+type API_PackageMultipleResponse struct {
+    Data []API_Package
+    ContinuationToken string
+}
+
+type API_Manifest struct {
     PackageIdentifier string
     Versions []API_ManifestVersionInterface
 }
@@ -25,115 +30,23 @@ type API_ManifestVersionInterface interface {
     GetInstallerProductCodes() []string
 }
 
-type PackageMultipleResponse struct {
-    Data []Package
-    ContinuationToken string
+// TODO: Decide whether generic union or implementing
+// a non-empty interface is best for the below types
+
+type API_ManifestSearchVersionInterface interface {
+    API_ManifestSearchVersion_1_1_0 | API_ManifestSearchVersion_1_4_0
 }
 
-type Information struct {
-    Data struct {
-        SourceIdentifier        string
-        ServerSupportedVersions []string
-    }
-}
-
-type MatchType string
-
-const (
-    Exact MatchType           = "Exact"
-    CaseInsensitive MatchType = "CaseInsensitive"
-    StartsWith MatchType      = "StartsWith"
-    Substring MatchType       = "Substring"
-    Wildcard MatchType        = "Wildcard"
-    Fuzzy MatchType           = "Fuzzy"
-    FuzzySubstring MatchType  = "FuzzySubstring"
-)
-
-type PackageMatchField string
-
-const (
-    PackageIdentifier PackageMatchField = "PackageIdentifier"
-    PackageName PackageMatchField = "PackageName"
-    Moniker PackageMatchField = "Moniker"
-    Command PackageMatchField = "Command"
-    Tag PackageMatchField = "Tag"
-    PackageFamilyName PackageMatchField = "PackageFriendlyName"
-    ProductCode PackageMatchField = "ProductCode"
-    NormalizedPackageNameAndPublisher PackageMatchField = "NormalizedPackageNameAndPublisher"
-    Market PackageMatchField = "Market"
-)
-
-type QueryParameter string
-
-const (
-    QueryParameterVersion QueryParameter = "Version"
-    QueryParameterChannel QueryParameter = "Channel"
-    QueryParameterMarket QueryParameter = "Market"
-)
-
-type SearchRequestMatch struct {
-    KeyWord string
-    MatchType MatchType
-}
-
-type SearchRequestPackageMatchFilter struct {
-    PackageMatchField PackageMatchField
-    RequestMatch SearchRequestMatch
-}
-
-type ManifestSearch struct {
-    MaximumResults int
-    FetchAllManifests bool
-    Query SearchRequestMatch
-    Inclusions []SearchRequestPackageMatchFilter
-    Filters []SearchRequestPackageMatchFilter
-}
-
-type ManifestSearchVersionInterface interface {
-    ManifestSearchVersion_1_1_0 | ManifestSearchVersion_1_4_0
-}
-
-type ManifestSearchResponse[MSVI ManifestSearchVersionInterface] struct {
+type API_ManifestSearchResponse[MSVI API_ManifestSearchVersionInterface] struct {
     PackageIdentifier string
     PackageName string
     Publisher string
     Versions []MSVI
 }
 
-type ManifestSingleResponse struct {
-    Data *Manifest
-    RequiredQueryParameters []QueryParameter
-    UnsupportedQueryParameters []QueryParameter
+type API_ManifestSearchResult[MSVI API_ManifestSearchVersionInterface] struct {
+    Data []API_ManifestSearchResponse[MSVI]
+    RequiredPackageMatchFields []API_PackageMatchField_1_1_0
+    UnsupportedPackageMatchFields []API_PackageMatchField_1_1_0
 }
-
-type ManifestSearchResult[MSVI ManifestSearchVersionInterface] struct {
-    Data []ManifestSearchResponse[MSVI]
-    RequiredPackageMatchFields []PackageMatchField
-    UnsupportedPackageMatchFields []PackageMatchField
-}
-
-type Architecture string
-
-const (
-    neutral Architecture = "neutral"
-    x86 Architecture = "x86"
-    x64 Architecture = "x64"
-    arm Architecture = "arm"
-    arm64 Architecture = "arm64"
-)
-
-type Scope string
-
-const (
-    user Scope = "user"
-    machine Scope = "machine"
-)
-
-type InstallMode string
-
-const (
-    interactive InstallMode = "interactive"
-    silent InstallMode = "silent"
-    silentWithProgress InstallMode = "silentWithProgress"
-)
 

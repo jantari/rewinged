@@ -6,15 +6,15 @@ package models
 type API_Installer_1_4_0 struct {
     InstallerIdentifier string `yaml:"InstallerIdentifier"`
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`
-    Architecture Architecture `yaml:"Architecture"`
+    Architecture string `yaml:"Architecture"`
     MinimumOSVersion string `yaml:"MinimumOSVersion"`
     Platform []string `yaml:"Platform"`
     InstallerType string `yaml:"InstallerType"`
-    Scope Scope `yaml:"Scope"`
+    Scope string `yaml:"Scope"`
     InstallerUrl string `yaml:"InstallerUrl"`
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
-    InstallModes []InstallMode `yaml:"InstallModes"`
+    InstallModes []string `yaml:"InstallModes"`
     InstallerSwitches InstallerSwitches_1_4_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
     ExpectedReturnCodes []ExpectedReturnCode_1_4_0 `yaml:"ExpectedReturnCodes"`
@@ -97,7 +97,7 @@ type Documentation_1_4_0 struct {
     DocumentUrl string `yaml:"DocumentUrl"`
 }
 
-type ManifestSearchVersion_1_4_0 struct {
+type API_ManifestSearchVersion_1_4_0 struct {
     PackageVersion string
     Channel string //maxlength: 16, unused
     PackageFamilyNames []string

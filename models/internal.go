@@ -104,11 +104,11 @@ func (ms *ManifestsStore) GetAll() (value map[string][]API_ManifestVersionInterf
     return m
 }
 
-func (ms *ManifestsStore) GetAllPackageIdentifiers() (value []Package) {
+func (ms *ManifestsStore) GetAllPackageIdentifiers() (value []API_Package) {
     ms.RLock()
-    var p []Package
+    var p []API_Package
     for k := range ms.internal {
-        p = append(p, Package{
+        p = append(p, API_Package{
             PackageIdentifier: k,
         })
     }
@@ -139,7 +139,12 @@ func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]API_Manifes
   return manifestResultsMap
 }
 
-func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]API_ManifestVersionInterface {
+func (ms *ManifestsStore) GetByMatchFilter (
+  inclusions []API_SearchRequestPackageMatchFilter_1_1_0,
+  filters []API_SearchRequestPackageMatchFilter_1_1_0,
+) (
+  map[string][]API_ManifestVersionInterface,
+) {
   var manifestResultsMap = make(map[string][]API_ManifestVersionInterface)
   normalizeReplacer := strings.NewReplacer(" ", "", "-", "", "+", "")
 

@@ -98,7 +98,7 @@ func getManifests (path string) {
   }
 }
 
-func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
+func parseMultiFileManifest (filenames ...string) (*models.API_Manifest, error) {
   if len(filenames) <= 0 {
     return nil, errors.New("you must provide at least one filename for reading Values")
   }
@@ -179,7 +179,7 @@ func parseMultiFileManifest (filenames ...string) (*models.Manifest, error) {
     },
   )
 
-  manifest := &models.Manifest {
+  manifest := &models.API_Manifest {
     PackageIdentifier: packageidentifier,
     Versions: []models.API_ManifestVersionInterface{ versions_api },
   }
@@ -303,7 +303,7 @@ func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
   return manifest, err
 }
 
-func parseManifestFile (path string) *models.Manifest {
+func parseManifestFile (path string) *models.API_Manifest {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
     log.Printf("error opening yaml file %v\n", err)
@@ -320,8 +320,8 @@ func parseManifestFile (path string) *models.Manifest {
   return manifest
 }
 
-func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1_1_0) *models.Manifest {
-  manifest := &models.Manifest {
+func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1_1_0) *models.API_Manifest {
+  manifest := &models.API_Manifest {
     PackageIdentifier: singleton.PackageIdentifier,
     Versions: []models.API_ManifestVersionInterface{ models.API_ManifestVersion_1_1_0 {
       PackageVersion: singleton.PackageVersion,

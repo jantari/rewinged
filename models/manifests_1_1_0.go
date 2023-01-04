@@ -38,9 +38,9 @@ type Manifest_InstallerManifest_1_1_0 struct {
     Platform []string `yaml:"Platform"`
     MinimumOSVersion string `yaml:"MinimumOSVersion"`
     InstallerType string `yaml:"InstallerType"`
-    Scope Scope `yaml:"Scope" json:",omitempty"`
-    InstallModes []InstallMode `yaml:"InstallModes" json:",omitempty"`
-    InstallerSwitches InstallerSwitches `yaml:"InstallerSwitches"`
+    Scope string `yaml:"Scope" json:",omitempty"`
+    InstallModes []string `yaml:"InstallModes" json:",omitempty"`
+    InstallerSwitches InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
     ExpectedReturnCodes []ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes" json:",omitempty"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"` // enum of either install or uninstallPrevious
@@ -77,16 +77,16 @@ type Manifest_InstallerManifest_1_1_0 struct {
 
 type Manifest_Installer_1_1_0 struct {
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`
-    Architecture Architecture `yaml:"Architecture"`
+    Architecture string `yaml:"Architecture"`
     MinimumOSVersion string `yaml:"MinimumOSVersion"`
     Platform []string `yaml:"Platform"`
     InstallerType string `yaml:"InstallerType"`
-    Scope Scope `yaml:"Scope"`
+    Scope string `yaml:"Scope"`
     InstallerUrl string `yaml:"InstallerUrl"`
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
-    InstallModes []InstallMode `yaml:"InstallModes"`
-    InstallerSwitches InstallerSwitches `yaml:"InstallerSwitches"`
+    InstallModes []string `yaml:"InstallModes"`
+    InstallerSwitches InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
     ExpectedReturnCodes []ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"`

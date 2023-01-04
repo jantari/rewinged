@@ -10,7 +10,7 @@ import (
 )
 
 func GetPackages(c *gin.Context) {
-    response := &models.PackageMultipleResponse{
+    response := &models.API_PackageMultipleResponse{
         Data: models.Manifests.GetAllPackageIdentifiers(),
     }
 
@@ -22,9 +22,9 @@ func GetPackage(c *gin.Context) {
   fmt.Println("/packageManifests: Someone tried to GET package '", c.Param("package_identifier"), "'")
   fmt.Println("with query params:", c.Request.URL.Query())
 
-  response := models.ManifestSingleResponse {
-    RequiredQueryParameters: []models.QueryParameter{},
-    UnsupportedQueryParameters: []models.QueryParameter{},
+  response := models.API_ManifestSingleResponse_1_1_0 {
+    RequiredQueryParameters: []models.API_QueryParameter_1_1_0{},
+    UnsupportedQueryParameters: []models.API_QueryParameter_1_1_0{},
     Data: nil,
   }
 
@@ -32,7 +32,7 @@ func GetPackage(c *gin.Context) {
   if len(pkg) > 0 {
     fmt.Println("the package was found!")
 
-    response.Data = &models.Manifest{
+    response.Data = &models.API_Manifest{
       PackageIdentifier: c.Param("package_identifier"),
       Versions: pkg,
     }
@@ -40,7 +40,7 @@ func GetPackage(c *gin.Context) {
     c.JSON(200, response)
   } else {
     fmt.Println("the package was NOT found!")
-    c.JSON(404, models.WingetApiError{
+    c.JSON(404, models.API_WingetApiError{
       ErrorCode: 404,
       ErrorMessage: "The specified package was not found.",
     })
@@ -48,12 +48,12 @@ func GetPackage(c *gin.Context) {
 }
 
 func SearchForPackage(c *gin.Context) {
-  var post models.ManifestSearch
+  var post models.API_ManifestSearchRequest_1_1_0
   if err := c.BindJSON(&post); err == nil {
     fmt.Printf("%+v\n", post)
-    response := &models.ManifestSearchResult[models.ManifestSearchVersion_1_1_0]{
-      RequiredPackageMatchFields: []models.PackageMatchField{},
-      Data: []models.ManifestSearchResponse[models.ManifestSearchVersion_1_1_0] {},
+    response := &models.API_ManifestSearchResult[models.API_ManifestSearchVersion_1_1_0]{
+      RequiredPackageMatchFields: []models.API_PackageMatchField_1_1_0{},
+      Data: []models.API_ManifestSearchResponse[models.API_ManifestSearchVersion_1_1_0] {},
     }
 
     // results is a map where the PackageIdentifier is the key
@@ -74,10 +74,10 @@ func SearchForPackage(c *gin.Context) {
     if len(results) > 0 {
       for packageId, packageVersions := range results {
         fmt.Println("  package", packageId, "with", len(packageVersions), "versions.")
-        var versions []models.ManifestSearchVersion_1_1_0
+        var versions []models.API_ManifestSearchVersion_1_1_0
 
         for _, version := range packageVersions {
-          versions = append(versions, models.ManifestSearchVersion_1_1_0{
+          versions = append(versions, models.API_ManifestSearchVersion_1_1_0{
             PackageVersion: version.GetPackageVersion(),
             Channel: "",
             PackageFamilyNames: []string{},
@@ -85,7 +85,7 @@ func SearchForPackage(c *gin.Context) {
           })
         }
 
-        response.Data = append(response.Data, models.ManifestSearchResponse[models.ManifestSearchVersion_1_1_0]{
+        response.Data = append(response.Data, models.API_ManifestSearchResponse[models.API_ManifestSearchVersion_1_1_0]{
           PackageIdentifier: packageId,
           PackageName: packageVersions[0].GetDefaultLocalePackageName(),
           Publisher: packageVersions[0].GetDefaultLocalePublisher(),
