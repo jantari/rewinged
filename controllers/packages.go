@@ -28,7 +28,7 @@ func GetPackage(c *gin.Context) {
     Data: nil,
   }
 
-  var pkg []models.ManifestVersionInterface = models.Manifests.GetAllVersions(c.Param("package_identifier"))
+  var pkg []models.API_ManifestVersionInterface = models.Manifests.GetAllVersions(c.Param("package_identifier"))
   if len(pkg) > 0 {
     fmt.Println("the package was found!")
 
@@ -59,7 +59,7 @@ func SearchForPackage(c *gin.Context) {
     // results is a map where the PackageIdentifier is the key
     // and the values are arrays of manifests with that PackageIdentifier.
     // This means the values will be different versions of the package.
-    var results map[string][]models.ManifestVersionInterface
+    var results map[string][]models.API_ManifestVersionInterface
 
     if post.Query.KeyWord != "" {
       fmt.Println("someone searched the repo for:", post.Query.KeyWord)

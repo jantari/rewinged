@@ -14,10 +14,10 @@ type Package struct {
 
 type Manifest struct {
     PackageIdentifier string
-    Versions []ManifestVersionInterface
+    Versions []API_ManifestVersionInterface
 }
 
-type ManifestVersionInterface interface {
+type API_ManifestVersionInterface interface {
     GetDefaultLocalePackageName() string
     GetDefaultLocalePublisher() string
     GetDefaultLocaleShortDescription() string
@@ -111,4 +111,29 @@ type ManifestSearchResult[MSVI ManifestSearchVersionInterface] struct {
     RequiredPackageMatchFields []PackageMatchField
     UnsupportedPackageMatchFields []PackageMatchField
 }
+
+type Architecture string
+
+const (
+    neutral Architecture = "neutral"
+    x86 Architecture = "x86"
+    x64 Architecture = "x64"
+    arm Architecture = "arm"
+    arm64 Architecture = "arm64"
+)
+
+type Scope string
+
+const (
+    user Scope = "user"
+    machine Scope = "machine"
+)
+
+type InstallMode string
+
+const (
+    interactive InstallMode = "interactive"
+    silent InstallMode = "silent"
+    silentWithProgress InstallMode = "silentWithProgress"
+)
 

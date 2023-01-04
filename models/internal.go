@@ -66,37 +66,37 @@ func findField(v interface{}, name string) reflect.Value {
 // Internal in-memory data store of all manifest data
 type ManifestsStore struct {
     sync.RWMutex
-    internal map[string]map[string]ManifestVersionInterface
+    internal map[string]map[string]API_ManifestVersionInterface
 }
 
-func (ms *ManifestsStore) Set(packageidentifier string, packageversion string, value ManifestVersionInterface) {
+func (ms *ManifestsStore) Set(packageidentifier string, packageversion string, value API_ManifestVersionInterface) {
     ms.Lock()
     vmap, ok := ms.internal[packageidentifier]
     if !ok {
-        vmap = make(map[string]ManifestVersionInterface)
+        vmap = make(map[string]API_ManifestVersionInterface)
         ms.internal[packageidentifier] = vmap
     }
     vmap[packageversion] = value
     ms.Unlock()
 }
 
-func (ms *ManifestsStore) GetAllVersions(packageidentifier string) (value []ManifestVersionInterface) {
+func (ms *ManifestsStore) GetAllVersions(packageidentifier string) (value []API_ManifestVersionInterface) {
     ms.RLock()
     result := getMapValues(ms.internal[packageidentifier])
     ms.RUnlock()
     return result
 }
 
-func (ms *ManifestsStore) Get(packageidentifier string, packageversion string) (value ManifestVersionInterface) {
+func (ms *ManifestsStore) Get(packageidentifier string, packageversion string) (value API_ManifestVersionInterface) {
     ms.RLock()
     result := ms.internal[packageidentifier][packageversion]
     ms.RUnlock()
     return result
 }
 
-func (ms *ManifestsStore) GetAll() (value map[string][]ManifestVersionInterface) {
+func (ms *ManifestsStore) GetAll() (value map[string][]API_ManifestVersionInterface) {
     ms.RLock()
-    var m = make(map[string][]ManifestVersionInterface)
+    var m = make(map[string][]API_ManifestVersionInterface)
     for k := range ms.internal {
         m[k] = getMapValues(ms.internal[k])
     }
@@ -124,8 +124,8 @@ func (ms *ManifestsStore) GetManifestCount() (value int) {
     return count
 }
 
-func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]ManifestVersionInterface {
-  var manifestResultsMap = make(map[string][]ManifestVersionInterface)
+func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]API_ManifestVersionInterface {
+  var manifestResultsMap = make(map[string][]API_ManifestVersionInterface)
   ms.RLock()
   for packageIdentifier, packageVersions := range ms.internal {
     for _, version := range packageVersions {
@@ -139,8 +139,8 @@ func (ms *ManifestsStore) GetByKeyword (keyword string) map[string][]ManifestVer
   return manifestResultsMap
 }
 
-func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]ManifestVersionInterface {
-  var manifestResultsMap = make(map[string][]ManifestVersionInterface)
+func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMatchFilter, filters []SearchRequestPackageMatchFilter) map[string][]API_ManifestVersionInterface {
+  var manifestResultsMap = make(map[string][]API_ManifestVersionInterface)
   normalizeReplacer := strings.NewReplacer(" ", "", "-", "", "+", "")
 
   ms.RLock()
@@ -310,6 +310,6 @@ func (ms *ManifestsStore) GetByMatchFilter (inclusions []SearchRequestPackageMat
 
 // Global variable that will hold all in-memory manifest data
 var Manifests = ManifestsStore{
-    internal: make(map[string]map[string]ManifestVersionInterface),
+    internal: make(map[string]map[string]API_ManifestVersionInterface),
 }
 
