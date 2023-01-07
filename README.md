@@ -13,11 +13,11 @@ I'm also using it as an opportunity to learn some Go.
 - ✅ Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
 - ✅ Add your own manifests for internal software
 - ✅ Search, list, show and install software - the core winget features
-- ✅ Runs on Windows, Linux or in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
+- ✅ Runs on Windows, Linux and in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
 
-### Not Yet Working
+### Not Yet Working or Complete
 
-- ⚠️ Package manifest versions other than 1.1.0 have not been tested
+- ⚠️ Only package manifest versions 1.1.0 and 1.2.0 are supported currently (no support for old 1.0.0 manifests)
 - ⚠️ Correlation of installed programs and programs in the repository is not perfect (in part due to [this](https://github.com/microsoft/winget-cli-restsource/issues/59) and [this](https://github.com/microsoft/winget-cli-restsource/issues/166))
 - ⚠️ Live reload of manifests (works for new and changed manifests, but removals are only picked up on restart)
 - ❌ Authentication (it's currently [not supported by winget](https://github.com/microsoft/winget-cli-restsource/issues/100))
