@@ -6,7 +6,6 @@ import (
   "os"
   "errors"
   "strings"
-  "reflect"
 
   "gopkg.in/yaml.v3"
 
@@ -22,9 +21,8 @@ func ingestManifestsWorker() error {
       continue
     }
 
-    // temporary map collecting all files belonging to a particular
-    // packageidentifier + PackageVersion combination for later processing
-    var nonSingletonsMap = make(map[string][]string)
+    // temporary map collecting all files belonging to a particular package
+    var nonSingletonsMap = make(map[models.MultiFileManifest][]models.ManifestTypeAndPath)
 
     for _, file := range files {
       if !file.IsDir() {
@@ -40,12 +38,15 @@ func ingestManifestsWorker() error {
           if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
             basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
             if basemanifest.ManifestType == "singleton" {
-              var manifest = parseManifestFile(path + "/" + file.Name())
-              fmt.Println("  Found singleton manifest for package", manifest.PackageIdentifier)
-              models.Manifests.Set(manifest.PackageIdentifier, basemanifest.PackageVersion, manifest.Versions[0])
+              var manifest = parseFileAsSingletonManifest(path + "/" + file.Name())
+              fmt.Println("  Found singleton manifest for package", basemanifest.PackageIdentifier)
+              models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, manifest.GetVersions()[0])
             } else {
-              nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion] =
-                append(nonSingletonsMap[basemanifest.PackageIdentifier + "/" + basemanifest.PackageVersion], path + "/" + file.Name())
+              typeAndPath := models.ManifestTypeAndPath{
+                ManifestType: basemanifest.ManifestType,
+                FilePath: path + "/" + file.Name(),
+              }
+              nonSingletonsMap[basemanifest.ToMultiFileManifest()] = append(nonSingletonsMap[basemanifest.ToMultiFileManifest()], typeAndPath)
             }
           }
         }
@@ -54,14 +55,14 @@ func ingestManifestsWorker() error {
 
     if len(nonSingletonsMap) > 0 {
       for key, value := range nonSingletonsMap {
-        fmt.Println("  Found multi-file manifests for package", key)
-        var merged_manifest, err = parseMultiFileManifest(value...)
+        fmt.Println("  Found multi-file manifests for package", key.PackageIdentifier)
+        var merged_manifest, err = parseMultiFileManifest(key, value...)
         if err != nil {
-          log.Println("  Could not parse the manifest files for this package", err)
+          log.Println("Could not parse the manifest files for this package", key.PackageIdentifier, err)
         } else {
-          for _, version := range merged_manifest.Versions {
+          for _, version := range merged_manifest.GetVersions() {
             // Replace the existing PkgId + PkgVersion entry with this one
-            models.Manifests.Set(merged_manifest.PackageIdentifier, version.GetPackageVersion(), version)
+            models.Manifests.Set(merged_manifest.GetPackageIdentifier(), version.GetPackageVersion(), version)
           }
         }
       }
@@ -98,52 +99,69 @@ func getManifests (path string) {
   }
 }
 
-func parseMultiFileManifest (filenames ...string) (*models.API_Manifest, error) {
-  if len(filenames) <= 0 {
-    return nil, errors.New("you must provide at least one filename for reading Values")
+func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files ...models.ManifestTypeAndPath) (models.API_ManifestInterface, error) {
+  if len(files) <= 0 {
+    return nil, errors.New("you must provide at least one filename for reading values")
   }
 
-  var packageidentifier string
-  versions      := []models.Manifest_VersionManifest_1_1_0{}
-  installers    := []models.Manifest_InstallerManifest_1_1_0{}
-  locales       := []models.Manifest_LocaleManifest_1_1_0{}
-  defaultlocale := &models.Manifest_DefaultLocaleManifest_1_1_0{}
+  versions   := []models.Manifest_VersionManifestInterface{}
+  installers := []models.Manifest_InstallerManifestInterface{}
+  locales    := []models.Manifest_LocaleManifestInterface{}
+  var defaultlocale models.Manifest_DefaultLocaleManifestInterface
 
-  for _, file := range filenames {
-    var basemanifest, err = parseFileAsBaseManifest(file)
-    if err != nil {
-      log.Printf("error unmarshaling YAML file '%v' as BaseManifest: %v, skipping", file, err)
-      continue
-    }
-    packageidentifier = basemanifest.PackageIdentifier
-
-    yamlFile, err := os.ReadFile(file)
+  for _, file := range files {
+    yamlFile, err := os.ReadFile(file.FilePath)
     if err != nil {
       log.Printf("yamlFile.Get err   #%v ", err)
+      continue
     }
-    switch basemanifest.ManifestType {
+    switch file.ManifestType {
       case "version":
-        version := &models.Manifest_VersionManifest_1_1_0{}
+        var version models.Manifest_VersionManifestInterface
+        if multifilemanifest.ManifestVersion == "1.1.0" {
+          version = &models.Manifest_VersionManifest_1_1_0{}
+        } else {
+          log.Println("Unsupported VersionManifest version", multifilemanifest.ManifestVersion, file)
+          continue
+        }
         err = yaml.Unmarshal(yamlFile, version)
         if err != nil {
           log.Printf("error unmarshalling version-manifest %v\n", err)
         }
-        versions = append(versions, *version)
+        versions = append(versions, version)
       case "installer":
-        installer := &models.Manifest_InstallerManifest_1_1_0{}
+        var installer models.Manifest_InstallerManifestInterface
+        if multifilemanifest.ManifestVersion == "1.1.0" {
+          installer = &models.Manifest_InstallerManifest_1_1_0{}
+        } else {
+          log.Println("Unsupported InstallerManifest version", multifilemanifest.ManifestVersion, file)
+          continue
+        }
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
           log.Printf("error unmarshalling installer-manifest %v\n", err)
         }
-        installers = append(installers, *installer)
+        installers = append(installers, installer)
       case "locale":
-        locale := &models.Manifest_LocaleManifest_1_1_0{}
+        var locale models.Manifest_LocaleManifestInterface
+        if multifilemanifest.ManifestVersion == "1.1.0" {
+          locale = &models.Manifest_LocaleManifest_1_1_0{}
+        } else {
+          log.Println("Unsupported LocaleManifest version", multifilemanifest.ManifestVersion, file)
+          continue
+        }
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
           log.Printf("error unmarshalling locale-manifest %v\n", err)
         }
-        locales = append(locales, *locale)
+        locales = append(locales, locale)
       case "defaultLocale":
+        if multifilemanifest.ManifestVersion == "1.1.0" {
+          defaultlocale = &models.Manifest_DefaultLocaleManifest_1_1_0{}
+        } else {
+          log.Println("Unsupported DefaultLocaleManifest version", multifilemanifest.ManifestVersion, file)
+          continue
+        }
         err = yaml.Unmarshal(yamlFile, defaultlocale)
         if err != nil {
           log.Printf("error unmarshalling defaultlocale-manifest %v\n", err)
@@ -154,7 +172,7 @@ func parseMultiFileManifest (filenames ...string) (*models.API_Manifest, error) 
 
   // It's possible there were no installer or locale manifests or parsing them failed
   if len(installers) == 0 {
-    return nil, errors.New("package manifests did not contain any (valid) installers")
+    return nil, errors.New(multifilemanifest.PackageVersion + " package manifests did not contain any (valid) installers")
   }
   if len(versions) == 0 {
     return nil, errors.New("package manifests did not contain any (valid) locales")
@@ -164,67 +182,68 @@ func parseMultiFileManifest (filenames ...string) (*models.API_Manifest, error) 
   // This logic should probably be moved out of this function, so that it returns
   // the full unaltered data from the combined manifests - and restructuring to
   // API-format will happen somewhere else
-  var apiLocales []models.Locale_1_1_0
+  var apiLocales []models.API_LocaleInterface
   for _, locale := range locales {
-    apiLocales = append(apiLocales, *localeManifestToAPILocale(locale))
+    apiLocales = append(apiLocales, locale.ToApiLocale())
   }
 
-  versions_api := models.API_ManifestVersionInterface(
-    models.API_ManifestVersion_1_1_0{
-      PackageVersion: versions[0].PackageVersion,
-      DefaultLocale: *defaultLocaleManifestToAPIDefaultLocale(*defaultlocale),
-      Channel: "",
-      Locales: apiLocales,
-      Installers: installerManifestToAPIInstallers(installers[0]),
-    },
+  var apiInstallers []models.API_InstallerInterface
+  apiInstallers = append(apiInstallers, installers[0].ToApiInstallers()...)
+
+  manifest, err := newApiManifest(
+    multifilemanifest.ManifestVersion,
+    multifilemanifest.PackageIdentifier,
+    versions[0].GetPackageVersion(),
+    defaultlocale.ToApiDefaultLocale(),
+    apiLocales,
+    apiInstallers,
   )
 
-  manifest := &models.API_Manifest {
-    PackageIdentifier: packageidentifier,
-    Versions: []models.API_ManifestVersionInterface{ versions_api },
-  }
-
-  return manifest, nil //err
+  return manifest, err
 }
 
-// This function takes two values and returns
-// the one that's not set to its default value.
-func nonDefault[T any] (optionA T, optionB T) T {
-  if isDefault(reflect.ValueOf(optionA)) {
-    return optionB
+func newApiManifest (
+  ManifestVersion string,
+  PackageIdentifier string,
+  pv string,
+  dl models.API_DefaultLocaleInterface,
+  l []models.API_LocaleInterface,
+  inst []models.API_InstallerInterface,
+) (
+  models.API_ManifestInterface,
+  error,
+) {
+  var api_ret models.API_ManifestInterface
+  var api_mvi models.API_ManifestVersionInterface
+
+  if ManifestVersion == "1.1.0" {
+    var apiLocales []models.API_Locale_1_1_0
+    for _, locale := range l {
+      apiLocales = append(apiLocales, locale.(models.API_Locale_1_1_0))
+    }
+
+    var apiInstallers []models.API_Installer_1_1_0
+    for _, intf := range inst {
+      apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_1_0))
+    }
+
+    api_mvi = models.API_ManifestVersion_1_1_0{
+      PackageVersion: pv,
+      DefaultLocale: dl.(models.API_DefaultLocale_1_1_0),
+      Channel: "",
+      Locales: apiLocales,
+      Installers: apiInstallers,
+    }
+
+    api_ret = &models.API_Manifest_1_1_0 {
+      PackageIdentifier: PackageIdentifier,
+      Versions: []models.API_ManifestVersionInterface{ api_mvi },
+    }
+  } else {
+    return nil, errors.New("Converting manifest v" + ManifestVersion + " data for API responses is not yet supported.")
   }
-  return optionA
-}
 
-func isDefault(v reflect.Value) bool {
-  return v.IsZero()
-}
-
-// The installers in a manifest can contain 'global' properties
-// that apply to all individual installers listed. In the API responses
-// these have to be merged and set on all individual installers.
-func installerManifestToAPIInstallers (instm models.Manifest_InstallerManifest_1_1_0) []models.API_Installer_1_1_0 {
-  var apiInstallers []models.API_Installer_1_1_0
-
-  for _, installer := range instm.Installers {
-    apiInstallers = append(apiInstallers, models.API_Installer_1_1_0 {
-      Architecture: installer.Architecture, // Already mandatory per-Installer
-      MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
-      Platform: nonDefault(installer.Platform, instm.Platform),
-      InstallerType: nonDefault(installer.InstallerType, instm.InstallerType),
-      Scope: nonDefault(installer.Scope, instm.Scope),
-      InstallerUrl: installer.InstallerUrl, // Already mandatory per-Installer
-      InstallerSha256: installer.InstallerSha256, // Already mandatory per-Installer
-      SignatureSha256: installer.SignatureSha256, // Can only be set per-Installer, impossible to copy from global manifest properties
-      InstallModes: nonDefault(installer.InstallModes, instm.InstallModes),
-      InstallerSuccessCodes: nonDefault(installer.InstallerSuccessCodes, instm.InstallerSuccessCodes),
-      ExpectedReturnCodes: nonDefault(installer.ExpectedReturnCodes, instm.ExpectedReturnCodes),
-      ProductCode: nonDefault(installer.ProductCode, instm.ProductCode),
-      ReleaseDate: nonDefault(installer.ReleaseDate, instm.ReleaseDate),
-    })
-  }
-
-  return apiInstallers
+  return api_ret, nil
 }
 
 func manifestInstallerToAPIInstaller (installer models.Manifest_Installer_1_1_0) models.API_Installer_1_1_0 {
@@ -245,53 +264,6 @@ func manifestInstallerToAPIInstaller (installer models.Manifest_Installer_1_1_0)
   }
 }
 
-func defaultLocaleManifestToAPIDefaultLocale (locm models.Manifest_DefaultLocaleManifest_1_1_0) *models.DefaultLocale_1_1_0 {
-  return &models.DefaultLocale_1_1_0{
-    PackageLocale: locm.PackageLocale,
-    Publisher: locm.Publisher,
-    PublisherUrl: locm.PublisherUrl,
-    PublisherSupportUrl: locm.PublisherSupportUrl,
-    PrivacyUrl: locm.PrivacyUrl,
-    Author: locm.Author,
-    PackageName: locm.PackageName,
-    PackageUrl: locm.PackageUrl,
-    License: locm.License,
-    LicenseUrl: locm.LicenseUrl,
-    Copyright: locm.Copyright,
-    CopyrightUrl: locm.CopyrightUrl,
-    ShortDescription: locm.ShortDescription,
-    Description: locm.Description,
-    Moniker: locm.Moniker,
-    Tags: locm.Tags,
-    Agreements: locm.Agreements,
-    ReleaseNotes: locm.ReleaseNotes,
-    ReleaseNotesUrl: locm.ReleaseNotesUrl,
-  }
-}
-
-func localeManifestToAPILocale (locm models.Manifest_LocaleManifest_1_1_0) *models.Locale_1_1_0 {
-  return &models.Locale_1_1_0{
-    PackageLocale: locm.PackageLocale,
-    Publisher: locm.Publisher,
-    PublisherUrl: locm.PublisherUrl,
-    PublisherSupportUrl: locm.PublisherSupportUrl,
-    PrivacyUrl: locm.PrivacyUrl,
-    Author: locm.Author,
-    PackageName: locm.PackageName,
-    PackageUrl: locm.PackageUrl,
-    License: locm.License,
-    LicenseUrl: locm.LicenseUrl,
-    Copyright: locm.Copyright,
-    CopyrightUrl: locm.CopyrightUrl,
-    ShortDescription: locm.ShortDescription,
-    Description: locm.Description,
-    Tags: locm.Tags,
-    Agreements: locm.Agreements,
-    ReleaseNotes: locm.ReleaseNotes,
-    ReleaseNotesUrl: locm.ReleaseNotesUrl,
-  }
-}
-
 func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
   manifest := &models.BaseManifest{}
   yamlFile, err := os.ReadFile(path)
@@ -303,7 +275,7 @@ func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
   return manifest, err
 }
 
-func parseManifestFile (path string) *models.API_Manifest {
+func parseFileAsSingletonManifest (path string) models.API_ManifestInterface {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
     log.Printf("error opening yaml file %v\n", err)
@@ -320,12 +292,12 @@ func parseManifestFile (path string) *models.API_Manifest {
   return manifest
 }
 
-func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1_1_0) *models.API_Manifest {
-  manifest := &models.API_Manifest {
+func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1_1_0) *models.API_Manifest_1_1_0 {
+  manifest := &models.API_Manifest_1_1_0 {
     PackageIdentifier: singleton.PackageIdentifier,
     Versions: []models.API_ManifestVersionInterface{ models.API_ManifestVersion_1_1_0 {
       PackageVersion: singleton.PackageVersion,
-      DefaultLocale: models.DefaultLocale_1_1_0 {
+      DefaultLocale: models.API_DefaultLocale_1_1_0 {
         PackageLocale: singleton.PackageLocale,
         PackageName: singleton.PackageName,
         Publisher: singleton.Publisher,
@@ -333,7 +305,7 @@ func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1
         License: singleton.License,
       },
       Channel: "",
-      Locales: []models.Locale_1_1_0{},
+      Locales: []models.API_Locale_1_1_0{},
       Installers: []models.API_Installer_1_1_0{manifestInstallerToAPIInstaller(singleton.Installers[0])},
     },
   },

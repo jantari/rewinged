@@ -3,6 +3,27 @@ package models
 // All of these definitions are based on the v1.1.0 API specification:
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml
 
+type API_Information_1_4_0 struct {
+    Data struct {
+        SourceIdentifier        string
+        ServerSupportedVersions []string
+    }
+}
+
+type API_Manifest_1_4_0 struct {
+    PackageIdentifier string
+    Versions []API_ManifestVersionInterface
+}
+
+// API_Manifest_1_4_0 implements all of the API_ManifestInterface interface methods
+func (in API_Manifest_1_4_0) GetPackageIdentifier() string {
+    return in.PackageIdentifier
+}
+
+func (in API_Manifest_1_4_0) GetVersions() []API_ManifestVersionInterface {
+    return in.Versions
+}
+
 type API_Installer_1_4_0 struct {
     InstallerIdentifier string `yaml:"InstallerIdentifier"`
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`

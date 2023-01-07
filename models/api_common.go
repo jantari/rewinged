@@ -17,9 +17,9 @@ type API_PackageMultipleResponse struct {
     ContinuationToken string
 }
 
-type API_Manifest struct {
-    PackageIdentifier string
-    Versions []API_ManifestVersionInterface
+type API_ManifestInterface interface {
+    GetPackageIdentifier() string
+    GetVersions() []API_ManifestVersionInterface
 }
 
 type API_ManifestVersionInterface interface {
@@ -28,6 +28,18 @@ type API_ManifestVersionInterface interface {
     GetDefaultLocaleShortDescription() string
     GetPackageVersion() string
     GetInstallerProductCodes() []string
+}
+
+type API_InstallerInterface interface {
+    dummyFunc() bool
+}
+
+type API_LocaleInterface interface {
+    dummyFunc() bool
+}
+
+type API_DefaultLocaleInterface interface {
+    dummyFunc() bool
 }
 
 // TODO: Decide whether generic union or implementing

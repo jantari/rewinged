@@ -7,6 +7,13 @@ import (
     "reflect"
 )
 
+// This is used when discovering manifest
+// files and passing them around internally
+type ManifestTypeAndPath struct {
+    ManifestType string
+    FilePath string
+}
+
 func getMapValues[M ~map[K]V, K comparable, V any](m M) []V {
     r := make([]V, 0, len(m))
     for _, v := range m {
@@ -311,6 +318,19 @@ func (ms *ManifestsStore) GetByMatchFilter (
   ms.RUnlock()
 
   return manifestResultsMap
+}
+
+// This function takes two values and returns
+// the one that's not set to its default value.
+func nonDefault[T any] (optionA T, optionB T) T {
+  if isDefault(reflect.ValueOf(optionA)) {
+    return optionB
+  }
+  return optionA
+}
+
+func isDefault(v reflect.Value) bool {
+  return v.IsZero()
 }
 
 // Global variable that will hold all in-memory manifest data

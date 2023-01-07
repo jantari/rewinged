@@ -32,7 +32,7 @@ func GetPackage(c *gin.Context) {
   if len(pkg) > 0 {
     fmt.Println("the package was found!")
 
-    response.Data = &models.API_Manifest{
+    response.Data = &models.API_Manifest_1_1_0{
       PackageIdentifier: c.Param("package_identifier"),
       Versions: pkg,
     }

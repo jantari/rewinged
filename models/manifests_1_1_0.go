@@ -28,6 +28,11 @@ type Manifest_VersionManifest_1_1_0 struct {
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
+// Implement Manifest_VersionManifestInterface
+func (vm Manifest_VersionManifest_1_1_0) GetPackageVersion() string {
+    return vm.PackageVersion
+}
+
 // The struct for a separate installer manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json
 type Manifest_InstallerManifest_1_1_0 struct {
@@ -73,6 +78,31 @@ type Manifest_InstallerManifest_1_1_0 struct {
     Installers []Manifest_Installer_1_1_0 `yaml:"Installers"`
     ManifestType string `yaml:"ManifestType"`
     ManifestVersion string `yaml:"ManifestVersion"`
+}
+
+// implement Manifest_InstallerManifestInterface interface
+func (instm Manifest_InstallerManifest_1_1_0) ToApiInstallers() []API_InstallerInterface {
+  var apiInstallers []API_InstallerInterface
+
+  for _, installer := range instm.Installers {
+    apiInstallers = append(apiInstallers, API_Installer_1_1_0 {
+      Architecture: installer.Architecture, // Already mandatory per-Installer
+      MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
+      Platform: nonDefault(installer.Platform, instm.Platform),
+      InstallerType: nonDefault(installer.InstallerType, instm.InstallerType),
+      Scope: nonDefault(installer.Scope, instm.Scope),
+      InstallerUrl: installer.InstallerUrl, // Already mandatory per-Installer
+      InstallerSha256: installer.InstallerSha256, // Already mandatory per-Installer
+      SignatureSha256: installer.SignatureSha256, // Can only be set per-Installer, impossible to copy from global manifest properties
+      InstallModes: nonDefault(installer.InstallModes, instm.InstallModes),
+      InstallerSuccessCodes: nonDefault(installer.InstallerSuccessCodes, instm.InstallerSuccessCodes),
+      ExpectedReturnCodes: nonDefault(installer.ExpectedReturnCodes, instm.ExpectedReturnCodes),
+      ProductCode: nonDefault(installer.ProductCode, instm.ProductCode),
+      ReleaseDate: nonDefault(installer.ReleaseDate, instm.ReleaseDate),
+    })
+  }
+
+  return apiInstallers
 }
 
 type Manifest_Installer_1_1_0 struct {
@@ -143,6 +173,29 @@ type Manifest_LocaleManifest_1_1_0 struct {
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
+func (locm Manifest_LocaleManifest_1_1_0) ToApiLocale() API_LocaleInterface {
+  return API_Locale_1_1_0{
+    PackageLocale: locm.PackageLocale,
+    Publisher: locm.Publisher,
+    PublisherUrl: locm.PublisherUrl,
+    PublisherSupportUrl: locm.PublisherSupportUrl,
+    PrivacyUrl: locm.PrivacyUrl,
+    Author: locm.Author,
+    PackageName: locm.PackageName,
+    PackageUrl: locm.PackageUrl,
+    License: locm.License,
+    LicenseUrl: locm.LicenseUrl,
+    Copyright: locm.Copyright,
+    CopyrightUrl: locm.CopyrightUrl,
+    ShortDescription: locm.ShortDescription,
+    Description: locm.Description,
+    Tags: locm.Tags,
+    Agreements: locm.Agreements,
+    ReleaseNotes: locm.ReleaseNotes,
+    ReleaseNotesUrl: locm.ReleaseNotesUrl,
+  }
+}
+
 // The struct for a separate defaultlocale manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
 // It is the same as Locale except with an added Moniker
@@ -170,3 +223,26 @@ type Manifest_DefaultLocaleManifest_1_1_0 struct {
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
+func (locm Manifest_DefaultLocaleManifest_1_1_0) ToApiDefaultLocale() API_DefaultLocaleInterface {
+  return API_DefaultLocale_1_1_0{
+    PackageLocale: locm.PackageLocale,
+    Publisher: locm.Publisher,
+    PublisherUrl: locm.PublisherUrl,
+    PublisherSupportUrl: locm.PublisherSupportUrl,
+    PrivacyUrl: locm.PrivacyUrl,
+    Author: locm.Author,
+    PackageName: locm.PackageName,
+    PackageUrl: locm.PackageUrl,
+    License: locm.License,
+    LicenseUrl: locm.LicenseUrl,
+    Copyright: locm.Copyright,
+    CopyrightUrl: locm.CopyrightUrl,
+    ShortDescription: locm.ShortDescription,
+    Description: locm.Description,
+    Moniker: locm.Moniker,
+    Tags: locm.Tags,
+    Agreements: locm.Agreements,
+    ReleaseNotes: locm.ReleaseNotes,
+    ReleaseNotesUrl: locm.ReleaseNotesUrl,
+  }
+}

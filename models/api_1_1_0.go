@@ -10,12 +10,12 @@ type API_Information_1_1_0 struct {
     }
 }
 
-// API_ManifestVersion_1_1_0 implements all of the ManifestVersionInterface interface methods
+// API_ManifestVersion_1_1_0 implements all of the API_ManifestVersionInterface interface methods
 type API_ManifestVersion_1_1_0 struct {
     PackageVersion string
-    DefaultLocale DefaultLocale_1_1_0
+    DefaultLocale API_DefaultLocale_1_1_0
     Channel string
-    Locales []Locale_1_1_0
+    Locales []API_Locale_1_1_0
     Installers []API_Installer_1_1_0
 }
 
@@ -43,6 +43,20 @@ func (ver API_ManifestVersion_1_1_0) GetInstallerProductCodes() []string {
     }
 
     return productCodes
+}
+
+type API_Manifest_1_1_0 struct {
+    PackageIdentifier string
+    Versions []API_ManifestVersionInterface
+}
+
+// API_Manifest_1_1_0 implements all of the API_ManifestInterface interface methods
+func (in API_Manifest_1_1_0) GetPackageIdentifier() string {
+    return in.PackageIdentifier
+}
+
+func (in API_Manifest_1_1_0) GetVersions() []API_ManifestVersionInterface {
+    return in.Versions
 }
 
 type API_Installer_1_1_0 struct {
@@ -90,6 +104,10 @@ type API_Installer_1_1_0 struct {
     ElevationRequirement string `yaml:"ElevationRequirement" json:",omitempty"`
 }
 
+func (in API_Installer_1_1_0) dummyFunc() bool {
+    return false
+}
+
 type ExpectedReturnCode_1_1_0 struct {
     InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
     ReturnResponse string `yaml:"ReturnResponse"`
@@ -103,7 +121,7 @@ type Agreement_1_1_0 struct {
 
 // API Locale schema
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1336
-type Locale_1_1_0 struct {
+type API_Locale_1_1_0 struct {
     PackageLocale string `yaml:"PackageLocale"`
     Publisher string `yaml:"Publisher"`
     PublisherUrl string `yaml:"PublisherUrl"`
@@ -124,10 +142,14 @@ type Locale_1_1_0 struct {
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
+func (in API_Locale_1_1_0) dummyFunc() bool {
+    return false
+}
+
 // API DefaultLocale schema
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1421
 // It is the same as Locale except with an added Moniker
-type DefaultLocale_1_1_0 struct {
+type API_DefaultLocale_1_1_0 struct {
     PackageLocale string `yaml:"PackageLocale"`
     Publisher string `yaml:"Publisher"`
     PublisherUrl string `yaml:"PublisherUrl"`
@@ -147,6 +169,10 @@ type DefaultLocale_1_1_0 struct {
     Agreements []Agreement_1_1_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
+}
+
+func (in API_DefaultLocale_1_1_0) dummyFunc() bool {
+    return false
 }
 
 type API_ManifestSearchVersion_1_1_0 struct {
@@ -182,7 +208,7 @@ type InstallerSwitches_1_1_0 struct {
 }
 
 type API_ManifestSingleResponse_1_1_0 struct {
-    Data *API_Manifest
+    Data *API_Manifest_1_1_0
     RequiredQueryParameters []API_QueryParameter_1_1_0
     UnsupportedQueryParameters []API_QueryParameter_1_1_0
 }
