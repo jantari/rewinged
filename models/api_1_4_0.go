@@ -10,6 +10,41 @@ type API_Information_1_4_0 struct {
     }
 }
 
+// API_ManifestVersion_1_4_0 implements all of the API_ManifestVersionInterface interface methods
+type API_ManifestVersion_1_4_0 struct {
+    PackageVersion string
+    DefaultLocale API_DefaultLocale_1_4_0
+    Channel string
+    Locales []API_Locale_1_4_0
+    Installers []API_Installer_1_4_0
+}
+
+func (ver API_ManifestVersion_1_4_0) GetDefaultLocalePackageName() string {
+    return ver.DefaultLocale.PackageName
+}
+
+func (ver API_ManifestVersion_1_4_0) GetDefaultLocalePublisher() string {
+    return ver.DefaultLocale.Publisher
+}
+
+func (ver API_ManifestVersion_1_4_0) GetDefaultLocaleShortDescription() string {
+    return ver.DefaultLocale.ShortDescription
+}
+
+func (ver API_ManifestVersion_1_4_0) GetPackageVersion() string {
+    return ver.PackageVersion
+}
+
+func (ver API_ManifestVersion_1_4_0) GetInstallerProductCodes() []string {
+    var productCodes []string
+
+    for _, installer := range ver.Installers {
+      productCodes = append(productCodes, installer.ProductCode)
+    }
+
+    return productCodes
+}
+
 type API_Manifest_1_4_0 struct {
     PackageIdentifier string
     Versions []API_ManifestVersionInterface
@@ -38,7 +73,7 @@ type API_Installer_1_4_0 struct {
     InstallModes []string `yaml:"InstallModes"`
     InstallerSwitches InstallerSwitches_1_4_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
-    ExpectedReturnCodes []ExpectedReturnCode_1_4_0 `yaml:"ExpectedReturnCodes"`
+    ExpectedReturnCodes []API_ExpectedReturnCode_1_4_0 `yaml:"ExpectedReturnCodes"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"`
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
@@ -86,9 +121,13 @@ type API_Installer_1_4_0 struct {
     } `yaml:"InstallationMetadata"`
 }
 
+func (in API_Installer_1_4_0) dummyFunc() bool {
+    return false
+}
+
 // API Locale schema
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml
-type Locale_1_4_0 struct {
+type API_Locale_1_4_0 struct {
     PackageLocale string `yaml:"PackageLocale"`
     Publisher string `yaml:"Publisher"`
     PublisherUrl string `yaml:"PublisherUrl"`
@@ -104,7 +143,7 @@ type Locale_1_4_0 struct {
     ShortDescription string `yaml:"ShortDescription"`
     Description string `yaml:"Description"`
     Tags []string `yaml:"Tags"`
-    Agreements []Agreement_1_4_0 `yaml:"Agreements"`
+    Agreements []API_Agreement_1_4_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
     PurchaseUrl string `yaml:"PurchaseUrl"`
@@ -112,10 +151,40 @@ type Locale_1_4_0 struct {
     Documentations []Documentation_1_4_0 `yaml:"Documentations"`
 }
 
-// Only exists in 1.4.0+, not in 1.1.0
-type Documentation_1_4_0 struct {
-    DocumentLabel string `yaml:"DocumentLabel"`
-    DocumentUrl string `yaml:"DocumentUrl"`
+func (in API_Locale_1_4_0) dummyFunc() bool {
+    return false
+}
+
+// API DefaultLocale schema
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1421
+// It is the same as Locale except with an added Moniker
+type API_DefaultLocale_1_4_0 struct {
+    PackageLocale string `yaml:"PackageLocale"`
+    Publisher string `yaml:"Publisher"`
+    PublisherUrl string `yaml:"PublisherUrl"`
+    PublisherSupportUrl string `yaml:"PublisherSupportUrl"`
+    PrivacyUrl string `yaml:"PrivacyUrl"`
+    Author string `yaml:"Author"`
+    PackageName string `yaml:"PackageName"`
+    PackageUrl string `yaml:"PackageUrl"`
+    License string `yaml:"License"`
+    LicenseUrl string `yaml:"LicenseUrl"`
+    Copyright string `yaml:"Copyright"`
+    CopyrightUrl string `yaml:"CopyrightUrl"`
+    ShortDescription string `yaml:"ShortDescription"`
+    Description string `yaml:"Description"`
+    Moniker string `yaml:"Moniker"`
+    Tags []string `yaml:"Tags"`
+    Agreements []API_Agreement_1_4_0 `yaml:"Agreements"`
+    ReleaseNotes string `yaml:"ReleaseNotes"`
+    ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
+    PurchaseUrl string `yaml:"PurchaseUrl"`
+    InstallationNotes string `yaml:"InstallationNotes"`
+    Documentations []Documentation_1_4_0 `yaml:"Documentations"`
+}
+
+func (in API_DefaultLocale_1_4_0) dummyFunc() bool {
+    return false
 }
 
 type API_ManifestSearchVersion_1_4_0 struct {
@@ -125,18 +194,6 @@ type API_ManifestSearchVersion_1_4_0 struct {
     ProductCodes []string
     AppsAndFeaturesEntryVersions string
     UpgradeCodes []string
-}
-
-type ExpectedReturnCode_1_4_0 struct {
-    InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
-    ReturnResponse string `yaml:"ReturnResponse"`
-    ReturnResponseUrl string `yaml:"ReturnResponseUrl"`
-}
-
-type Agreement_1_4_0 struct {
-    AgreementLabel string `yaml:"AgreementLabel" json:",omitempty"`
-    Agreement string `yaml:"Agreement"`
-    AgreementUrl string `yaml:"AgreementUrl"`
 }
 
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.4.0/manifest.installer.1.4.0.json#L294
@@ -160,5 +217,47 @@ type InstallerSwitches_1_4_0 struct {
     Log string `yaml:"Log" json:",omitempty"`
     Upgrade string `yaml:"Upgrade" json:",omitempty"`
     Custom string `yaml:"Custom" json:",omitempty"`
+}
+
+type API_ExpectedReturnCode_1_4_0 struct {
+    InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
+    ReturnResponse string `yaml:"ReturnResponse"`
+    ReturnResponseUrl string `yaml:"ReturnResponseUrl"`
+}
+
+type API_Agreement_1_4_0 struct {
+    AgreementLabel string `yaml:"AgreementLabel" json:",omitempty"`
+    Agreement string `yaml:"Agreement"`
+    AgreementUrl string `yaml:"AgreementUrl"`
+}
+
+type API_ManifestSingleResponse_1_4_0 struct {
+    Data *API_Manifest_1_4_0
+    RequiredQueryParameters []string
+    UnsupportedQueryParameters []string
+}
+
+type API_ManifestSearchRequest_1_4_0 struct {
+    MaximumResults int
+    FetchAllManifests bool
+    Query API_SearchRequestMatch_1_4_0
+    Inclusions []API_SearchRequestPackageMatchFilter_1_4_0
+    Filters []API_SearchRequestPackageMatchFilter_1_4_0
+}
+
+type API_SearchRequestPackageMatchFilter_1_4_0 struct {
+    PackageMatchField string
+    RequestMatch API_SearchRequestMatch_1_4_0
+}
+
+type API_SearchRequestMatch_1_4_0 struct {
+    KeyWord string
+    MatchType string
+}
+
+// Only exists in 1.4.0+, not in 1.1.0
+type Documentation_1_4_0 struct {
+    DocumentLabel string `yaml:"DocumentLabel"`
+    DocumentUrl string `yaml:"DocumentUrl"`
 }
 

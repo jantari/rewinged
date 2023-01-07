@@ -71,9 +71,9 @@ type API_Installer_1_1_0 struct {
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
     InstallModes []string `yaml:"InstallModes"`
-    InstallerSwitches InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
+    InstallerSwitches API_InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
-    ExpectedReturnCodes []ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes"`
+    ExpectedReturnCodes []API_ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"`
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
@@ -108,17 +108,6 @@ func (in API_Installer_1_1_0) dummyFunc() bool {
     return false
 }
 
-type ExpectedReturnCode_1_1_0 struct {
-    InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
-    ReturnResponse string `yaml:"ReturnResponse"`
-}
-
-type Agreement_1_1_0 struct {
-    AgreementLabel string `yaml:"AgreementLabel"`
-    Agreement string `yaml:"Agreement"`
-    AgreementUrl string `yaml:"AgreementUrl"`
-}
-
 // API Locale schema
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1336
 type API_Locale_1_1_0 struct {
@@ -137,7 +126,7 @@ type API_Locale_1_1_0 struct {
     ShortDescription string `yaml:"ShortDescription"`
     Description string `yaml:"Description"`
     Tags []string `yaml:"Tags"`
-    Agreements []Agreement_1_1_0 `yaml:"Agreements"`
+    Agreements []API_Agreement_1_1_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
@@ -166,7 +155,7 @@ type API_DefaultLocale_1_1_0 struct {
     Description string `yaml:"Description"`
     Moniker string `yaml:"Moniker"`
     Tags []string `yaml:"Tags"`
-    Agreements []Agreement_1_1_0 `yaml:"Agreements"`
+    Agreements []API_Agreement_1_1_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
@@ -197,7 +186,7 @@ type Dependencies_1_1_0 struct {
 // All properties of this struct are nullable strings, so set omitempty to make responses smaller
 // https://github.com/microsoft/winget-cli/blob/56df5adb2f974230c3db8fb7f84d2fe3150eb859/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json#L88
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L816
-type InstallerSwitches_1_1_0 struct {
+type API_InstallerSwitches_1_1_0 struct {
     Silent string `yaml:"Silent" json:",omitempty"`
     SilentWithProgress string `yaml:"SilentWithProgress" json:",omitempty"`
     Interactive string `yaml:"Interactive" json:",omitempty"`
@@ -207,20 +196,22 @@ type InstallerSwitches_1_1_0 struct {
     Custom string `yaml:"Custom" json:",omitempty"`
 }
 
+type API_ExpectedReturnCode_1_1_0 struct {
+    InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
+    ReturnResponse string `yaml:"ReturnResponse"`
+}
+
+type API_Agreement_1_1_0 struct {
+    AgreementLabel string `yaml:"AgreementLabel"`
+    Agreement string `yaml:"Agreement"`
+    AgreementUrl string `yaml:"AgreementUrl"`
+}
+
+
 type API_ManifestSingleResponse_1_1_0 struct {
     Data *API_Manifest_1_1_0
-    RequiredQueryParameters []API_QueryParameter_1_1_0
-    UnsupportedQueryParameters []API_QueryParameter_1_1_0
-}
-
-type API_SearchRequestMatch_1_1_0 struct {
-    KeyWord string
-    MatchType API_MatchType_1_1_0
-}
-
-type API_SearchRequestPackageMatchFilter_1_1_0 struct {
-    PackageMatchField API_PackageMatchField_1_1_0
-    RequestMatch API_SearchRequestMatch_1_1_0
+    RequiredQueryParameters []string
+    UnsupportedQueryParameters []string
 }
 
 type API_ManifestSearchRequest_1_1_0 struct {
@@ -231,39 +222,13 @@ type API_ManifestSearchRequest_1_1_0 struct {
     Filters []API_SearchRequestPackageMatchFilter_1_1_0
 }
 
-// "Enums":
+type API_SearchRequestPackageMatchFilter_1_1_0 struct {
+    PackageMatchField string
+    RequestMatch API_SearchRequestMatch_1_1_0
+}
 
-type API_QueryParameter_1_1_0 string
-
-const (
-    QueryParameterVersion API_QueryParameter_1_1_0 = "Version"
-    QueryParameterChannel API_QueryParameter_1_1_0 = "Channel"
-    QueryParameterMarket API_QueryParameter_1_1_0 = "Market"
-)
-
-type API_MatchType_1_1_0 string
-
-const (
-    Exact API_MatchType_1_1_0           = "Exact"
-    CaseInsensitive API_MatchType_1_1_0 = "CaseInsensitive"
-    StartsWith API_MatchType_1_1_0      = "StartsWith"
-    Substring API_MatchType_1_1_0       = "Substring"
-    Wildcard API_MatchType_1_1_0        = "Wildcard"
-    Fuzzy API_MatchType_1_1_0           = "Fuzzy"
-    FuzzySubstring API_MatchType_1_1_0  = "FuzzySubstring"
-)
-
-type API_PackageMatchField_1_1_0 string
-
-const (
-    PackageIdentifier API_PackageMatchField_1_1_0 = "PackageIdentifier"
-    PackageName API_PackageMatchField_1_1_0 = "PackageName"
-    Moniker API_PackageMatchField_1_1_0 = "Moniker"
-    Command API_PackageMatchField_1_1_0 = "Command"
-    Tag API_PackageMatchField_1_1_0 = "Tag"
-    PackageFamilyName API_PackageMatchField_1_1_0 = "PackageFriendlyName"
-    ProductCode API_PackageMatchField_1_1_0 = "ProductCode"
-    NormalizedPackageNameAndPublisher API_PackageMatchField_1_1_0 = "NormalizedPackageNameAndPublisher"
-    Market API_PackageMatchField_1_1_0 = "Market"
-)
+type API_SearchRequestMatch_1_1_0 struct {
+    KeyWord string
+    MatchType string
+}
 

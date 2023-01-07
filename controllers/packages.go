@@ -23,8 +23,8 @@ func GetPackage(c *gin.Context) {
   fmt.Println("with query params:", c.Request.URL.Query())
 
   response := models.API_ManifestSingleResponse_1_1_0 {
-    RequiredQueryParameters: []models.API_QueryParameter_1_1_0{},
-    UnsupportedQueryParameters: []models.API_QueryParameter_1_1_0{},
+    RequiredQueryParameters: []string{},
+    UnsupportedQueryParameters: []string{},
     Data: nil,
   }
 
@@ -52,7 +52,7 @@ func SearchForPackage(c *gin.Context) {
   if err := c.BindJSON(&post); err == nil {
     fmt.Printf("%+v\n", post)
     response := &models.API_ManifestSearchResult[models.API_ManifestSearchVersion_1_1_0]{
-      RequiredPackageMatchFields: []models.API_PackageMatchField_1_1_0{},
+      RequiredPackageMatchFields: []string{},
       Data: []models.API_ManifestSearchResponse[models.API_ManifestSearchVersion_1_1_0] {},
     }
 

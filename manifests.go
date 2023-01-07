@@ -120,6 +120,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         var version models.Manifest_VersionManifestInterface
         if multifilemanifest.ManifestVersion == "1.1.0" {
           version = &models.Manifest_VersionManifest_1_1_0{}
+        } else if multifilemanifest.ManifestVersion == "1.2.0" {
+          version = &models.Manifest_VersionManifest_1_2_0{}
         } else {
           log.Println("Unsupported VersionManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -133,6 +135,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         var installer models.Manifest_InstallerManifestInterface
         if multifilemanifest.ManifestVersion == "1.1.0" {
           installer = &models.Manifest_InstallerManifest_1_1_0{}
+        } else if multifilemanifest.ManifestVersion == "1.2.0" {
+          installer = &models.Manifest_InstallerManifest_1_2_0{}
         } else {
           log.Println("Unsupported InstallerManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -146,6 +150,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         var locale models.Manifest_LocaleManifestInterface
         if multifilemanifest.ManifestVersion == "1.1.0" {
           locale = &models.Manifest_LocaleManifest_1_1_0{}
+        } else if multifilemanifest.ManifestVersion == "1.2.0" {
+          locale = &models.Manifest_LocaleManifest_1_2_0{}
         } else {
           log.Println("Unsupported LocaleManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -158,6 +164,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
       case "defaultLocale":
         if multifilemanifest.ManifestVersion == "1.1.0" {
           defaultlocale = &models.Manifest_DefaultLocaleManifest_1_1_0{}
+        } else if multifilemanifest.ManifestVersion == "1.2.0" {
+          defaultlocale = &models.Manifest_DefaultLocaleManifest_1_2_0{}
         } else {
           log.Println("Unsupported DefaultLocaleManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -239,29 +247,34 @@ func newApiManifest (
       PackageIdentifier: PackageIdentifier,
       Versions: []models.API_ManifestVersionInterface{ api_mvi },
     }
+  } else if ManifestVersion == "1.2.0" {
+    var apiLocales []models.API_Locale_1_4_0
+    for _, locale := range l {
+      apiLocales = append(apiLocales, locale.(models.API_Locale_1_4_0))
+    }
+
+    var apiInstallers []models.API_Installer_1_4_0
+    for _, intf := range inst {
+      apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_4_0))
+    }
+
+    api_mvi = models.API_ManifestVersion_1_4_0{
+      PackageVersion: pv,
+      DefaultLocale: dl.(models.API_DefaultLocale_1_4_0),
+      Channel: "",
+      Locales: apiLocales,
+      Installers: apiInstallers,
+    }
+
+    api_ret = &models.API_Manifest_1_4_0 {
+      PackageIdentifier: PackageIdentifier,
+      Versions: []models.API_ManifestVersionInterface{ api_mvi },
+    }
   } else {
     return nil, errors.New("Converting manifest v" + ManifestVersion + " data for API responses is not yet supported.")
   }
 
   return api_ret, nil
-}
-
-func manifestInstallerToAPIInstaller (installer models.Manifest_Installer_1_1_0) models.API_Installer_1_1_0 {
-  return models.API_Installer_1_1_0 {
-    Architecture: installer.Architecture,
-    MinimumOSVersion: installer.MinimumOSVersion,
-    Platform: installer.Platform,
-    InstallerType: installer.InstallerType,
-    Scope: installer.Scope,
-    InstallerUrl: installer.InstallerUrl,
-    InstallerSha256: installer.InstallerSha256,
-    SignatureSha256: installer.SignatureSha256,
-    InstallModes: installer.InstallModes,
-    InstallerSuccessCodes: installer.InstallerSuccessCodes,
-    ExpectedReturnCodes: installer.ExpectedReturnCodes,
-    ProductCode: installer.ProductCode,
-    ReleaseDate: installer.ReleaseDate,
-  }
 }
 
 func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
@@ -306,7 +319,7 @@ func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1
       },
       Channel: "",
       Locales: []models.API_Locale_1_1_0{},
-      Installers: []models.API_Installer_1_1_0{manifestInstallerToAPIInstaller(singleton.Installers[0])},
+      Installers: []models.API_Installer_1_1_0{singleton.Installers[0].ToApiInstaller()},
     },
   },
   }

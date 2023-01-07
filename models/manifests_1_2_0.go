@@ -5,7 +5,7 @@ package models
 
 // A singleton manifest can only describe one package version and contain only one locale and one installer
 // Schema: https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.singleton.1.1.0.json
-type Manifest_SingletonManifest_1_1_0 struct {
+type Manifest_SingletonManifest_1_2_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     PackageLocale string `yaml:"PackageLocale"`
@@ -16,15 +16,18 @@ type Manifest_SingletonManifest_1_1_0 struct {
     Description string `yaml:"Description"`
     Moniker string `yaml:"Moniker"`
     Tags []string `yaml:"Tags"`
+    PurchaseUrl string `yaml:"PurchaseUrl"`
+    InstallationNotes string `yaml:"InstallationNotes"`
+    Documentations []Manifest_Documentation_1_2_0 `yaml:"Documentations"`
     ReleaseDate string `yaml:"ReleaseDate" json:",omitempty"`
-    Installers [1]Manifest_Installer_1_1_0 `yaml:"Installers"`
+    Installers [1]Manifest_Installer_1_2_0 `yaml:"Installers"`
     ManifestType string `yaml:"ManifestType"`
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
 // The struct for a separate version manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.version.1.1.0.json
-type Manifest_VersionManifest_1_1_0 struct {
+type Manifest_VersionManifest_1_2_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     DefaultLocale string `yaml:"DefaultLocale"`
@@ -33,13 +36,13 @@ type Manifest_VersionManifest_1_1_0 struct {
 }
 
 // Implement Manifest_VersionManifestInterface
-func (vm Manifest_VersionManifest_1_1_0) GetPackageVersion() string {
+func (vm Manifest_VersionManifest_1_2_0) GetPackageVersion() string {
     return vm.PackageVersion
 }
 
 // The struct for a separate installer manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json
-type Manifest_InstallerManifest_1_1_0 struct {
+type Manifest_InstallerManifest_1_2_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     Channel string `yaml:"Channel" json:",omitempty"`
@@ -49,9 +52,9 @@ type Manifest_InstallerManifest_1_1_0 struct {
     InstallerType string `yaml:"InstallerType"`
     Scope string `yaml:"Scope" json:",omitempty"`
     InstallModes []string `yaml:"InstallModes" json:",omitempty"`
-    InstallerSwitches Manifest_InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
+    InstallerSwitches Manifest_InstallerSwitches_1_2_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
-    ExpectedReturnCodes []Manifest_ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes" json:",omitempty"`
+    ExpectedReturnCodes []Manifest_ExpectedReturnCode_1_2_0 `yaml:"ExpectedReturnCodes" json:",omitempty"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"` // enum of either install or uninstallPrevious
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
@@ -79,26 +82,31 @@ type Manifest_InstallerManifest_1_1_0 struct {
         InstallerType string `yaml:"InstallerType" json:",omitempty"`
     } `yaml:"AppsAndFeaturesEntries" json:",omitempty"`
     ElevationRequirement string `yaml:"ElevationRequirement"`
-    Installers []Manifest_Installer_1_1_0 `yaml:"Installers"`
+    Installers []Manifest_Installer_1_2_0 `yaml:"Installers"`
+    PurchaseUrl string `yaml:"PurchaseUrl"`
+    InstallationNotes string `yaml:"InstallationNotes"`
+    Documentations []Manifest_Documentation_1_2_0 `yaml:"Documentations"`
+    DisplayInstallWarnings bool `yaml:"DisplayInstallWarnings"`
+    UnsupportedArguments []string `yaml:"UnsupportedArguments"`
     ManifestType string `yaml:"ManifestType"`
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
 // implement Manifest_InstallerManifestInterface interface
-func (instm Manifest_InstallerManifest_1_1_0) ToApiInstallers() []API_InstallerInterface {
+func (instm Manifest_InstallerManifest_1_2_0) ToApiInstallers() []API_InstallerInterface {
   var apiInstallers []API_InstallerInterface
 
   for _, installer := range instm.Installers {
-    var installer_API_ExpectedReturnCodes []API_ExpectedReturnCode_1_1_0
+    var installer_API_ExpectedReturnCodes []API_ExpectedReturnCode_1_4_0
     for _, erc := range installer.ExpectedReturnCodes {
-        installer_API_ExpectedReturnCodes = append(installer_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_1_0(erc))
+      installer_API_ExpectedReturnCodes = append(installer_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_4_0(erc))
     }
-    var instm_API_ExpectedReturnCodes []API_ExpectedReturnCode_1_1_0
+    var instm_API_ExpectedReturnCodes []API_ExpectedReturnCode_1_4_0
     for _, erc := range instm.ExpectedReturnCodes {
-        instm_API_ExpectedReturnCodes = append(instm_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_1_0(erc))
+      instm_API_ExpectedReturnCodes = append(instm_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_4_0(erc))
     }
 
-    apiInstallers = append(apiInstallers, API_Installer_1_1_0 {
+    apiInstallers = append(apiInstallers, API_Installer_1_4_0 {
       Architecture: installer.Architecture, // Already mandatory per-Installer
       MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
       Platform: nonDefault(installer.Platform, instm.Platform),
@@ -118,7 +126,7 @@ func (instm Manifest_InstallerManifest_1_1_0) ToApiInstallers() []API_InstallerI
   return apiInstallers
 }
 
-type Manifest_Installer_1_1_0 struct {
+type Manifest_Installer_1_2_0 struct {
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`
     Architecture string `yaml:"Architecture"`
     MinimumOSVersion string `yaml:"MinimumOSVersion"`
@@ -129,9 +137,9 @@ type Manifest_Installer_1_1_0 struct {
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
     InstallModes []string `yaml:"InstallModes"`
-    InstallerSwitches Manifest_InstallerSwitches_1_1_0 `yaml:"InstallerSwitches"`
+    InstallerSwitches Manifest_InstallerSwitches_1_2_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
-    ExpectedReturnCodes []Manifest_ExpectedReturnCode_1_1_0 `yaml:"ExpectedReturnCodes"`
+    ExpectedReturnCodes []Manifest_ExpectedReturnCode_1_2_0 `yaml:"ExpectedReturnCodes"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"`
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
@@ -159,15 +167,18 @@ type Manifest_Installer_1_1_0 struct {
         InstallerType string `yaml:"InstallerType" json:",omitempty"`
     } `yaml:"AppsAndFeaturesEntries"`
     ElevationRequirement string `yaml:"ElevationRequirement" json:",omitempty"`
+
+    DisplayInstallWarnings bool `yaml:"DisplayInstallWarnings"`
+    UnsupportedArguments []string `yaml:"UnsupportedArguments"`
 }
 
-func (mi Manifest_Installer_1_1_0) ToApiInstaller() API_Installer_1_1_0 {
-  var installer_API_ExpectedReturnCodes []API_ExpectedReturnCode_1_1_0
+func (mi Manifest_Installer_1_2_0) ToApiInstaller() API_Installer_1_4_0 {
+  var installer_API_ExpectedReturnCodes []API_ExpectedReturnCode_1_4_0
   for _, erc := range mi.ExpectedReturnCodes {
-    installer_API_ExpectedReturnCodes = append(installer_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_1_0(erc))
+    installer_API_ExpectedReturnCodes = append(installer_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_4_0(erc))
   }
 
-  return API_Installer_1_1_0 {
+  return API_Installer_1_4_0 {
     Architecture: mi.Architecture,
     MinimumOSVersion: mi.MinimumOSVersion,
     Platform: mi.Platform,
@@ -186,7 +197,7 @@ func (mi Manifest_Installer_1_1_0) ToApiInstaller() API_Installer_1_1_0 {
 
 // The struct for a separate locale manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
-type Manifest_LocaleManifest_1_1_0 struct {
+type Manifest_LocaleManifest_1_2_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     PackageLocale string `yaml:"PackageLocale"`
@@ -204,18 +215,18 @@ type Manifest_LocaleManifest_1_1_0 struct {
     ShortDescription string `yaml:"ShortDescription"`
     Description string `yaml:"Description"`
     Tags []string `yaml:"Tags"`
-    Agreements []Manifest_Agreement_1_1_0 `yaml:"Agreements"`
+    Agreements []Manifest_Agreement_1_2_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
-func (locm Manifest_LocaleManifest_1_1_0) ToApiLocale() API_LocaleInterface {
-  var apiAgreements []API_Agreement_1_1_0
+func (locm Manifest_LocaleManifest_1_2_0) ToApiLocale() API_LocaleInterface {
+  var apiAgreements []API_Agreement_1_4_0
   for _, ma := range locm.Agreements {
-    apiAgreements = append(apiAgreements, API_Agreement_1_1_0(ma))
+    apiAgreements = append(apiAgreements, API_Agreement_1_4_0(ma))
   }
 
-  return API_Locale_1_1_0{
+  return API_Locale_1_4_0{
     PackageLocale: locm.PackageLocale,
     Publisher: locm.Publisher,
     PublisherUrl: locm.PublisherUrl,
@@ -240,7 +251,7 @@ func (locm Manifest_LocaleManifest_1_1_0) ToApiLocale() API_LocaleInterface {
 // The struct for a separate defaultlocale manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.1.0/manifest.locale.1.1.0.json
 // It is the same as Locale except with an added Moniker
-type Manifest_DefaultLocaleManifest_1_1_0 struct {
+type Manifest_DefaultLocaleManifest_1_2_0 struct {
     PackageIdentifier string `yaml:"PackageIdentifier"`
     PackageVersion string `yaml:"PackageVersion"`
     PackageLocale string `yaml:"PackageLocale"`
@@ -259,18 +270,18 @@ type Manifest_DefaultLocaleManifest_1_1_0 struct {
     Description string `yaml:"Description"`
     Moniker string `yaml:"Moniker"`
     Tags []string `yaml:"Tags"`
-    Agreements []Manifest_Agreement_1_1_0 `yaml:"Agreements"`
+    Agreements []Manifest_Agreement_1_2_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
 }
 
-func (locm Manifest_DefaultLocaleManifest_1_1_0) ToApiDefaultLocale() API_DefaultLocaleInterface {
-  var apiAgreements []API_Agreement_1_1_0
+func (locm Manifest_DefaultLocaleManifest_1_2_0) ToApiDefaultLocale() API_DefaultLocaleInterface {
+  var apiAgreements []API_Agreement_1_4_0
   for _, ma := range locm.Agreements {
-    apiAgreements = append(apiAgreements, API_Agreement_1_1_0(ma))
+    apiAgreements = append(apiAgreements, API_Agreement_1_4_0(ma))
   }
 
-  return API_DefaultLocale_1_1_0{
+  return API_DefaultLocale_1_4_0{
     PackageLocale: locm.PackageLocale,
     Publisher: locm.Publisher,
     PublisherUrl: locm.PublisherUrl,
@@ -293,13 +304,13 @@ func (locm Manifest_DefaultLocaleManifest_1_1_0) ToApiDefaultLocale() API_Defaul
   }
 }
 
-type Manifest_Agreement_1_1_0 struct {
+type Manifest_Agreement_1_2_0 struct {
     AgreementLabel string `yaml:"AgreementLabel"`
     Agreement string `yaml:"Agreement"`
     AgreementUrl string `yaml:"AgreementUrl"`
 }
 
-type Manifest_InstallerSwitches_1_1_0 struct {
+type Manifest_InstallerSwitches_1_2_0 struct {
     Silent string `yaml:"Silent" json:",omitempty"`
     SilentWithProgress string `yaml:"SilentWithProgress" json:",omitempty"`
     Interactive string `yaml:"Interactive" json:",omitempty"`
@@ -309,7 +320,14 @@ type Manifest_InstallerSwitches_1_1_0 struct {
     Custom string `yaml:"Custom" json:",omitempty"`
 }
 
-type Manifest_ExpectedReturnCode_1_1_0 struct {
+type Manifest_ExpectedReturnCode_1_2_0 struct {
     InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
     ReturnResponse string `yaml:"ReturnResponse"`
+    ReturnResponseUrl string `yaml:"ReturnResponseUrl"`
 }
+
+type Manifest_Documentation_1_2_0 struct {
+    DocumentLabel string `yaml:"DocumentLabel"`
+    DocumentUrl string `yaml:"DocumentUrl"`
+}
+

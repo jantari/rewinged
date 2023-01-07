@@ -170,26 +170,26 @@ func (ms *ManifestsStore) GetByMatchFilter (
         var requestMatchValue string
 
         switch filter.PackageMatchField {
-          case NormalizedPackageNameAndPublisher:
+          case "NormalizedPackageNameAndPublisher":
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
             requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.GetDefaultLocalePackageName()))
-          case PackageIdentifier:
+          case "PackageIdentifier":
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
-          case PackageName:
+          case "PackageName":
             fallthrough
-          case Moniker:
+          case "Moniker":
             fallthrough
-          case Command:
+          case "Command":
             fallthrough
-          case Tag:
+          case "Tag":
             fallthrough
-          case PackageFamilyName:
+          case "PackageFamilyName":
             fallthrough
-          case ProductCode:
+          case "ProductCode":
             fallthrough
-          case Market:
+          case "Market":
             fallthrough
           default:
             // Just search the whole struct for a field with the right name
@@ -204,21 +204,21 @@ func (ms *ManifestsStore) GetByMatchFilter (
         switch filter.RequestMatch.MatchType {
           // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
           // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
-          case Exact:
+          case "Exact":
             if requestMatchValue != filter.RequestMatch.KeyWord {
               continue NEXT_VERSION
             }
-          case CaseInsensitive:
+          case "CaseInsensitive":
             if !strings.EqualFold(requestMatchValue, filter.RequestMatch.KeyWord) {
               continue NEXT_VERSION
             }
-          case StartsWith:
+          case "StartsWith":
             // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if !strings.HasPrefix(requestMatchValue, filter.RequestMatch.KeyWord) {
               continue NEXT_VERSION
             }
-          case Substring:
+          case "Substring":
             // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if !caseInsensitiveContains(requestMatchValue, filter.RequestMatch.KeyWord) {
@@ -243,26 +243,26 @@ func (ms *ManifestsStore) GetByMatchFilter (
         anyInclusionMatched = false
 
         switch inclusion.PackageMatchField {
-          case NormalizedPackageNameAndPublisher:
+          case "NormalizedPackageNameAndPublisher":
             // winget only ever sends the package / software name, the publisher isn't included so to
             // enable proper matching we also only compare against the normalized packagename.
             requestMatchValue = normalizeReplacer.Replace(strings.ToLower(packageVersion.GetDefaultLocalePackageName()))
-          case PackageIdentifier:
+          case "PackageIdentifier":
             // We don't need to recursively search for this field, it's easy to get to
             requestMatchValue = packageIdentifier
-          case PackageName:
+          case "PackageName":
             fallthrough
-          case Moniker:
+          case "Moniker":
             fallthrough
-          case Command:
+          case "Command":
             fallthrough
-          case Tag:
+          case "Tag":
             fallthrough
-          case PackageFamilyName:
+          case "PackageFamilyName":
             fallthrough
-          case ProductCode:
+          case "ProductCode":
             fallthrough
-          case Market:
+          case "Market":
             fallthrough
           default:
             // Just search the whole struct for a field with the right name
@@ -275,19 +275,19 @@ func (ms *ManifestsStore) GetByMatchFilter (
         switch inclusion.RequestMatch.MatchType {
           // TODO: `winget list -s rewinged-local -q lapce` searches for the ProductCode with MatchType Exact
           // Why does it use MatchType Exact?? Does the reference / official source normalize all ProductCodes on ingest??
-          case Exact:
+          case "Exact":
             if requestMatchValue == inclusion.RequestMatch.KeyWord {
               // Break out of the inclusions loop after one successful match
               anyInclusionMatched = true
               break NEXT_INCLUSION
             }
-          case CaseInsensitive:
+          case "CaseInsensitive":
             if strings.EqualFold(requestMatchValue, inclusion.RequestMatch.KeyWord) {
               // Break out of the inclusions loop after one successful match
               anyInclusionMatched = true
               break NEXT_INCLUSION
             }
-          case StartsWith:
+          case "StartsWith":
             // StartsWith is implemented as case-sensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if strings.HasPrefix(requestMatchValue, inclusion.RequestMatch.KeyWord) {
@@ -295,7 +295,7 @@ func (ms *ManifestsStore) GetByMatchFilter (
               anyInclusionMatched = true
               break NEXT_INCLUSION
             }
-          case Substring:
+          case "Substring":
             // Substring comparison is case-insensitive, because it is that way in the reference implementation as well:
             // https://github.com/microsoft/winget-cli-restsource/blob/01542050d79da0efbd11c0a5be543cb970b86eb9/src/WinGet.RestSource/Cosmos/PredicateGenerator.cs#L92-L102
             if caseInsensitiveContains(requestMatchValue, inclusion.RequestMatch.KeyWord) {

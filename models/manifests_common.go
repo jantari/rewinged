@@ -43,6 +43,10 @@ type Manifest_InstallerManifestInterface interface {
     ToApiInstallers() []API_InstallerInterface
 }
 
+type Manifest_InstallerInterface interface {
+    ToApiInstaller() API_InstallerInterface
+}
+
 type Manifest_LocaleManifestInterface interface {
     ToApiLocale() API_LocaleInterface
 }

@@ -58,7 +58,7 @@ type API_ManifestSearchResponse[MSVI API_ManifestSearchVersionInterface] struct 
 
 type API_ManifestSearchResult[MSVI API_ManifestSearchVersionInterface] struct {
     Data []API_ManifestSearchResponse[MSVI]
-    RequiredPackageMatchFields []API_PackageMatchField_1_1_0
-    UnsupportedPackageMatchFields []API_PackageMatchField_1_1_0
+    RequiredPackageMatchFields []string
+    UnsupportedPackageMatchFields []string
 }
 
