@@ -78,7 +78,7 @@ type API_Installer_1_1_0 struct {
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
     FileExtensions []string `yaml:"FileExtensions" json:",omitempty"` 
-    Dependencies Dependencies_1_1_0 `yaml:"Dependencies"`
+    Dependencies API_Dependencies_1_1_0 `yaml:"Dependencies"`
     PackageFamilyName string `yaml:"PackageFamilyName" json:",omitempty"`
     ProductCode string `yaml:"ProductCode"`
     Capabilities []string `yaml:"Capabilities" json:",omitempty"`
@@ -173,7 +173,7 @@ type API_ManifestSearchVersion_1_1_0 struct {
 
 // https://github.com/microsoft/winget-cli/blob/56df5adb2f974230c3db8fb7f84d2fe3150eb859/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json#L229
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L969
-type Dependencies_1_1_0 struct {
+type API_Dependencies_1_1_0 struct {
     WindowsFeatures []string `yaml:"WindowsFeatures" json:",omitempty"`
     WindowsLibraries []string `yaml:"WindowsLibraries" json:",omitempty"`
     PackageDependencies []struct {

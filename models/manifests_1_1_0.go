@@ -56,7 +56,7 @@ type Manifest_InstallerManifest_1_1_0 struct {
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
     FileExtensions []string `yaml:"FileExtensions" json:",omitempty"`
-    Dependencies Dependencies_1_1_0 `yaml:"Dependencies" json:",omitempty"`
+    Dependencies Manifest_Dependencies_1_1_0 `yaml:"Dependencies" json:",omitempty"`
     PackageFamilyName string `yaml:"PackageFamilyName" json:",omitempty"`
     ProductCode string `yaml:"ProductCode" json:",omitempty"`
     Capabilities []string `yaml:"Capabilities" json:",omitempty"`
@@ -69,7 +69,7 @@ type Manifest_InstallerManifest_1_1_0 struct {
     ReleaseDate string `yaml:"ReleaseDate" json:",omitempty"`
     InstallLocationRequired bool `yaml:"InstallLocationRequired" json:",omitempty"`
     RequireExplicitUpgrade bool `yaml:"RequireExplicitUpgrade" json:",omitempty"`
-    UnsupportedOSArchitectures []string `yaml:"UnsupportedOSArchitectures" json:",omitempty"`
+    UnsupportedOSArchitectures []string `yaml:"UnsupportedOSArchitectures"`
     AppsAndFeaturesEntries []struct {
         DisplayName string `yaml:"DisplayName" json:",omitempty"`
         Publisher string `yaml:"Publisher" json:",omitempty"`
@@ -99,6 +99,8 @@ func (instm Manifest_InstallerManifest_1_1_0) ToApiInstallers() []API_InstallerI
     }
 
     apiInstallers = append(apiInstallers, API_Installer_1_1_0 {
+      InstallerIdentifier: "", // This is in the API schema but idk where to get it from
+      InstallerLocale: nonDefault(installer.InstallerLocale, instm.InstallerLocale),
       Architecture: installer.Architecture, // Already mandatory per-Installer
       MinimumOSVersion: nonDefault(installer.MinimumOSVersion, instm.MinimumOSVersion), // Already mandatory per-Installer
       Platform: nonDefault(installer.Platform, instm.Platform),
@@ -107,11 +109,28 @@ func (instm Manifest_InstallerManifest_1_1_0) ToApiInstallers() []API_InstallerI
       InstallerUrl: installer.InstallerUrl, // Already mandatory per-Installer
       InstallerSha256: installer.InstallerSha256, // Already mandatory per-Installer
       SignatureSha256: installer.SignatureSha256, // Can only be set per-Installer, impossible to copy from global manifest properties
+      InstallerSwitches: API_InstallerSwitches_1_1_0(nonDefault(installer.InstallerSwitches, instm.InstallerSwitches)), // Can be converted directly as they're identical structs
       InstallModes: nonDefault(installer.InstallModes, instm.InstallModes),
       InstallerSuccessCodes: nonDefault(installer.InstallerSuccessCodes, instm.InstallerSuccessCodes),
       ExpectedReturnCodes: nonDefault(installer_API_ExpectedReturnCodes, instm_API_ExpectedReturnCodes),
+      UpgradeBehavior: nonDefault(installer.UpgradeBehavior, instm.UpgradeBehavior),
+      Commands: nonDefault(installer.Commands, instm.Commands),
+      Protocols: nonDefault(installer.Protocols, instm.Protocols),
+      FileExtensions: nonDefault(installer.FileExtensions, instm.FileExtensions),
+      Dependencies: API_Dependencies_1_1_0(nonDefault(installer.Dependencies, instm.Dependencies)),
+      PackageFamilyName: nonDefault(installer.PackageFamilyName, instm.PackageFamilyName),
       ProductCode: nonDefault(installer.ProductCode, instm.ProductCode),
+      Capabilities: nonDefault(installer.Capabilities, instm.Capabilities),
+      RestrictedCapabilities: nonDefault(installer.RestrictedCapabilities, instm.RestrictedCapabilities),
+      MSStoreProductIdentifier: "", // This is in the API schema but idk where to get it from
+      Markets: nonDefault(installer.Markets, instm.Markets),
+      InstallerAbortsTerminal: nonDefault(installer.InstallerAbortsTerminal, instm.InstallerAbortsTerminal),
       ReleaseDate: nonDefault(installer.ReleaseDate, instm.ReleaseDate),
+      InstallLocationRequired: nonDefault(installer.InstallLocationRequired, instm.InstallLocationRequired),
+      RequireExplicitUpgrade: nonDefault(installer.RequireExplicitUpgrade, instm.RequireExplicitUpgrade),
+      UnsupportedOSArchitectures: nonDefault(nonDefault(installer.UnsupportedOSArchitectures, instm.UnsupportedOSArchitectures), []string{}), // Workaround for https://github.com/golang/go/issues/27589
+      AppsAndFeaturesEntries: nonDefault(installer.AppsAndFeaturesEntries, instm.AppsAndFeaturesEntries),
+      ElevationRequirement: nonDefault(installer.ElevationRequirement, instm.ElevationRequirement),
     })
   }
 
@@ -136,7 +155,7 @@ type Manifest_Installer_1_1_0 struct {
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
     FileExtensions []string `yaml:"FileExtensions" json:",omitempty"` 
-    Dependencies Dependencies_1_1_0 `yaml:"Dependencies"`
+    Dependencies Manifest_Dependencies_1_1_0 `yaml:"Dependencies"`
     PackageFamilyName string `yaml:"PackageFamilyName" json:",omitempty"`
     ProductCode string `yaml:"ProductCode"`
     Capabilities []string `yaml:"Capabilities" json:",omitempty"`
@@ -313,3 +332,15 @@ type Manifest_ExpectedReturnCode_1_1_0 struct {
     InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
     ReturnResponse string `yaml:"ReturnResponse"`
 }
+
+// https://github.com/microsoft/winget-cli/blob/56df5adb2f974230c3db8fb7f84d2fe3150eb859/schemas/JSON/manifests/v1.1.0/manifest.installer.1.1.0.json#L229
+type Manifest_Dependencies_1_1_0 struct {
+    WindowsFeatures []string `yaml:"WindowsFeatures" json:",omitempty"`
+    WindowsLibraries []string `yaml:"WindowsLibraries" json:",omitempty"`
+    PackageDependencies []struct {
+        PackageIdentifier string `yaml:"PackageIdentifier"`
+        MinimumVersion string `yaml:"MinimumVersion"`
+    } `yaml:"PackageDependencies" json:",omitempty"`
+    ExternalDependencies []string `yaml:"ExternalDependencies" json:",omitempty"`
+}
+

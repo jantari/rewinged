@@ -71,14 +71,14 @@ type API_Installer_1_4_0 struct {
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
     InstallModes []string `yaml:"InstallModes"`
-    InstallerSwitches InstallerSwitches_1_4_0 `yaml:"InstallerSwitches"`
+    InstallerSwitches API_InstallerSwitches_1_4_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
     ExpectedReturnCodes []API_ExpectedReturnCode_1_4_0 `yaml:"ExpectedReturnCodes"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"`
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
     FileExtensions []string `yaml:"FileExtensions" json:",omitempty"` 
-    Dependencies Dependencies_1_4_0 `yaml:"Dependencies"`
+    Dependencies API_Dependencies_1_4_0 `yaml:"Dependencies"`
     PackageFamilyName string `yaml:"PackageFamilyName" json:",omitempty"`
     ProductCode string `yaml:"ProductCode"`
     Capabilities []string `yaml:"Capabilities" json:",omitempty"`
@@ -198,7 +198,7 @@ type API_ManifestSearchVersion_1_4_0 struct {
 
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.4.0/manifest.installer.1.4.0.json#L294
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml#L1015
-type Dependencies_1_4_0 struct {
+type API_Dependencies_1_4_0 struct {
     WindowsFeatures []string `yaml:"WindowsFeatures" json:",omitempty"`
     WindowsLibraries []string `yaml:"WindowsLibraries" json:",omitempty"`
     PackageDependencies []struct {
@@ -209,7 +209,7 @@ type Dependencies_1_4_0 struct {
 }
 
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml#L856
-type InstallerSwitches_1_4_0 struct {
+type API_InstallerSwitches_1_4_0 struct {
     Silent string `yaml:"Silent" json:",omitempty"`
     SilentWithProgress string `yaml:"SilentWithProgress" json:",omitempty"`
     Interactive string `yaml:"Interactive" json:",omitempty"`
