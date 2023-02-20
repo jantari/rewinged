@@ -1,63 +1,90 @@
 # rewinged
 
-rewinged is an implementation of the winget source REST API as a single, portable executable.
+rewinged is a self-hosted winget package source. It's portable and can run on Linux, Windows, in Docker, locally and in any cloud.
 
-It allows you to easily self-host private winget package repositories from a directory of package manifests.
+rewinged reads your package manifests from a directory and makes them searchable and accessable to winget via a REST API.
 
 It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so command-line args, output and behavior may change at any time!
 
-I'm also using it as an opportunity to learn some Go.
+## 🚀 Features
 
-### Already Working
+- Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
+- Add your own manifests for internal software
+- Search, list, show and install software - the core winget features
+- Runs on Windows, Linux and in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
 
-- ✅ Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
-- ✅ Add your own manifests for internal software
-- ✅ Search, list, show and install software - the core winget features
-- ✅ Runs on Windows, Linux and in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
+## 🚧 Not Yet Working or Complete
 
-### Not Yet Working or Complete
+- Only package manifest versions 1.1.0 and 1.2.0 are supported currently (no support for old 1.0.0 manifests)
+- Correlation of installed programs and programs in the repository is not perfect (in part due to [this](https://github.com/microsoft/winget-cli-restsource/issues/59) and [this](https://github.com/microsoft/winget-cli-restsource/issues/166))
+- Live reload of manifests (works for new and changed manifests, but removals are only picked up on restart)
+- Authentication (it's currently [not supported by winget](https://github.com/microsoft/winget-cli-restsource/issues/100))
+- Probably other stuff? It's work-in-progress - please submit an issue and/or PR if you notice anything!
 
-- ⚠️ Only package manifest versions 1.1.0 and 1.2.0 are supported currently (no support for old 1.0.0 manifests)
-- ⚠️ Correlation of installed programs and programs in the repository is not perfect (in part due to [this](https://github.com/microsoft/winget-cli-restsource/issues/59) and [this](https://github.com/microsoft/winget-cli-restsource/issues/166))
-- ⚠️ Live reload of manifests (works for new and changed manifests, but removals are only picked up on restart)
-- ❌ Authentication (it's currently [not supported by winget](https://github.com/microsoft/winget-cli-restsource/issues/100))
-- 🤔 Probably other stuff? It's work-in-progress - please submit an issue and/or PR if you notice anything!
+## ✅ Getting Started
 
-### Usage
+You can run winget, even without any arguments or configuration, and test the API by opening
+`http://localhost:8080/information` or `http://localhost:8080/packages` in a browser or with
+`curl` / `Invoke-RestMethod`.
 
-The following command-line arguments are available:
+But to use it with winget you will have to set up HTTPS because winget **requires**
+REST-sources to use HTTPS - plaintext HTTP is not allowed. If you do not have a PKI
+or a certificate from a publicly trusted CA like Let's Encrypt you can use then you
+can generate and trust a new self-signed certificate for testing purposes:
+
+<details>
+<summary><b>Generate and trust a certificate and private key in PowerShell 5.1</b></summary>
+
+```powershell
+# Because we are adding a certificate to the local machine store, this has to be run in an elevated PowerShell session
+
+$SelfSignedCertificateParameters = @{
+    'DnsName'         = 'localhost'
+    'NotAfter'        = (Get-Date).AddYears(1)
+    'FriendlyName'    = 'rewinged HTTPS'
+    'KeyAlgorithm'    = 'RSA'
+    'KeyExportPolicy' = 'Exportable'
+}
+$cert = New-SelfSignedCertificate @SelfSignedCertificateParameters
+
+$RSAPrivateKey    = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::GetRSAPrivateKey($cert)
+$PrivateKeyBytes  = $RSAPrivateKey.Key.Export([System.Security.Cryptography.CngKeyBlobFormat]::Pkcs8PrivateBlob)
+$PrivateKeyBase64 = [System.Convert]::ToBase64String($PrivateKeyBytes, [System.Base64FormattingOptions]::InsertLineBreaks)
+
+$CertificateBase64 = [System.Convert]::ToBase64String($cert.Export('Cert'), [System.Base64FormattingOptions]::InsertLineBreaks)
+
+Set-Content -Path private.key -Encoding Ascii -Value @"
+-----BEGIN RSA PRIVATE KEY-----`r`n${PrivateKeyBase64}`r`n-----END RSA PRIVATE KEY-----
+"@
+
+Set-Content -Path cert.pem -Encoding Ascii -Value @"
+-----BEGIN CERTIFICATE-----`r`n${CertificateBase64}`r`n-----END CERTIFICATE-----
+"@
+
+$store = [System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine')
+$store.Open('ReadWrite')
+$store.Add($cert)
+$store.Close()
+
+Remove-Item $cert.PSPath
+```
+</details>
+
+Then, you can run rewinged with HTTPS enabled:
 
 ```
-  -https
-        Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy
-  -httpsCertificateFile string
-        The webserver certificate to use if HTTPS is enabled (default "./cert.pem")
-  -httpsPrivateKeyFile string
-        The private key file to use if HTTPS is enabled (default "./private.key")
-  -listen string
-        The address and port for the REST API to listen on (default "localhost:8080")
-  -manifestPath string
-        The directory to search for package manifest files (default "./packages")
-  -version
-        Print the version information and exit
+./rewinged -https -listen localhost:8443
 ```
 
-Please note that winget **requires** REST-sources to use HTTPS - plaintext HTTP is not allowed,
-so you will have to either use the `-https*` options of rewinged to configure HTTPS directly or
-front it with a proxy such as nginx, HAProxy, caddy etc. that handles the encryption.
-
-You can however test the API without HTTPS, for example by opening `http://<listenaddress>:<port>/information`
-or `http://<listenaddress>:<port>/packages` in a browser or with `curl` / `Invoke-RestMethod`.
-
-### Using a local rewinged instance as a package source
+and add it as a package source in winget:
 
 ```
-~
-❯ winget source add -n rewinged-local -a https://localhost:8443 -t "Microsoft.Rest"
-Adding source:
-  rewinged-local -> https://localhost:8443
-Done
+winget source add -n rewinged-local -a https://localhost:8443 -t "Microsoft.Rest"
+```
 
+and query it!
+
+```
 ~
 ❯ winget search -s rewinged-local -q bottom
 Name   Id              Version
@@ -79,7 +106,9 @@ Successfully installed
 ❯
 ```
 
-### Helpful reference documentation
+## Helpful reference documentation
+
+rewinged: Run `./rewinged -help` to see all available command-line options.
 
 winget-cli-restsource: https://github.com/microsoft/winget-cli-restsource
 
