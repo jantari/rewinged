@@ -1,7 +1,6 @@
 # rewinged
 
 rewinged is a self-hosted winget package source. It's portable and can run on Linux, Windows, in Docker, locally and in any cloud.
-
 rewinged reads your package manifests from a directory and makes them searchable and accessable to winget via a REST API.
 
 It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so command-line args, output and behavior may change at any time!
@@ -9,7 +8,7 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so com
 ## 🚀 Features
 
 - Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
-- Add your own manifests for internal software
+- Add your own manifests for internal or customized software
 - Search, list, show and install software - the core winget features
 - Runs on Windows, Linux and in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
 
@@ -23,7 +22,7 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so com
 
 ## ✅ Getting Started
 
-You can run winget, even without any arguments or configuration, and test the API by opening
+You can run rewinged, even without any arguments or configuration, and test the API by opening
 `http://localhost:8080/information` or `http://localhost:8080/packages` in a browser or with
 `curl` / `Invoke-RestMethod`.
 
