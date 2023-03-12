@@ -114,6 +114,15 @@ func (instm Manifest_InstallerManifest_1_4_0) ToApiInstallers() []API_InstallerI
       instm_API_ExpectedReturnCodes = append(instm_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_4_0(erc))
     }
 
+    var installer_API_NestedInstallerFiles []API_NestedInstallerFile_1_4_0
+    for _, nif := range installer.NestedInstallerFiles {
+        installer_API_NestedInstallerFiles = append(installer_API_NestedInstallerFiles, API_NestedInstallerFile_1_4_0(nif))
+    }
+    var instm_API_NestedInstallerFiles []API_NestedInstallerFile_1_4_0
+    for _, nif := range instm.NestedInstallerFiles {
+        instm_API_NestedInstallerFiles = append(instm_API_NestedInstallerFiles, API_NestedInstallerFile_1_4_0(nif))
+    }
+
     apiInstallers = append(apiInstallers, API_Installer_1_4_0 {
       InstallerIdentifier: "", // This is in the API schema but idk where to get it from
       InstallerLocale: nonDefault(installer.InstallerLocale, instm.InstallerLocale),
@@ -148,10 +157,10 @@ func (instm Manifest_InstallerManifest_1_4_0) ToApiInstallers() []API_InstallerI
       AppsAndFeaturesEntries: nonDefault(installer.AppsAndFeaturesEntries, instm.AppsAndFeaturesEntries),
       ElevationRequirement: nonDefault(installer.ElevationRequirement, instm.ElevationRequirement),
       NestedInstallerType: nonDefault(installer.NestedInstallerType, instm.NestedInstallerType),
-      NestedInstallerFiles: nonDefault(installer.NestedInstallerFiles, instm.NestedInstallerFiles),
+      NestedInstallerFiles: nonDefault(installer_API_NestedInstallerFiles, instm_API_NestedInstallerFiles),
       DisplayInstallWarnings: nonDefault(installer.DisplayInstallWarnings, instm.DisplayInstallWarnings),
       UnsupportedArguments: nonDefault(installer.UnsupportedArguments, instm.UnsupportedArguments),
-      InstallationMetadata: nonDefault(installer.InstallationMetadata, instm.InstallationMetadata),
+      InstallationMetadata: API_InstallationMetadata_1_4_0(nonDefault(installer.InstallationMetadata, instm.InstallationMetadata)),
     })
   }
 
@@ -212,6 +221,11 @@ func (mi Manifest_Installer_1_4_0) ToApiInstaller() API_Installer_1_4_0 {
     installer_API_ExpectedReturnCodes = append(installer_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_4_0(erc))
   }
 
+  var installer_API_NestedInstallerFiles []API_NestedInstallerFile_1_4_0
+  for _, nif := range mi.NestedInstallerFiles {
+    installer_API_NestedInstallerFiles = append(installer_API_NestedInstallerFiles, API_NestedInstallerFile_1_4_0(nif))
+  }
+
   return API_Installer_1_4_0 {
     Architecture: mi.Architecture,
     MinimumOSVersion: mi.MinimumOSVersion,
@@ -222,32 +236,32 @@ func (mi Manifest_Installer_1_4_0) ToApiInstaller() API_Installer_1_4_0 {
     InstallerSha256: mi.InstallerSha256,
     SignatureSha256: mi.SignatureSha256,
     InstallModes: mi.InstallModes,
-    //InstallerSwitches:
+    InstallerSwitches: API_InstallerSwitches_1_4_0(mi.InstallerSwitches), // Can be converted directly as they're identical structs
     InstallerSuccessCodes: mi.InstallerSuccessCodes,
     ExpectedReturnCodes: installer_API_ExpectedReturnCodes,
     UpgradeBehavior: mi.UpgradeBehavior,
     Commands: mi.Commands,
     Protocols: mi.Protocols,
     FileExtensions: mi.FileExtensions,
-    //Dependencies:
+    Dependencies: API_Dependencies_1_4_0(mi.Dependencies),
     PackageFamilyName: mi.PackageFamilyName,
     ProductCode: mi.ProductCode,
     Capabilities: mi.Capabilities,
     RestrictedCapabilities: mi.RestrictedCapabilities,
-    // MSStoreProductIdentifier:
-    // Markets:
+    MSStoreProductIdentifier: "", // This is in the API schema but idk where to get it from
+    Markets: mi.Markets,
     InstallerAbortsTerminal: mi.InstallerAbortsTerminal,
     ReleaseDate: mi.ReleaseDate,
     InstallLocationRequired: mi.InstallLocationRequired,
     RequireExplicitUpgrade: mi.RequireExplicitUpgrade,
     UnsupportedOSArchitectures: mi.UnsupportedOSArchitectures,
-    // AppsAndFeaturesEntries:
+    AppsAndFeaturesEntries: mi.AppsAndFeaturesEntries,
     ElevationRequirement: mi.ElevationRequirement,
     NestedInstallerType: mi.NestedInstallerType,
-    NestedInstallerFiles: mi.NestedInstallerFiles,
+    NestedInstallerFiles: installer_API_NestedInstallerFiles,
     DisplayInstallWarnings: mi.DisplayInstallWarnings,
     UnsupportedArguments: mi.UnsupportedArguments,
-    InstallationMetadata: mi.InstallationMetadata,
+    InstallationMetadata: API_InstallationMetadata_1_4_0(mi.InstallationMetadata),
   }
 }
 

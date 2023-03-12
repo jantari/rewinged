@@ -103,22 +103,10 @@ type API_Installer_1_4_0 struct {
     } `yaml:"AppsAndFeaturesEntries" json:",omitempty"`
     ElevationRequirement string `yaml:"ElevationRequirement" json:",omitempty"`
     NestedInstallerType string `yaml:"NestedInstallerType" json:",omitempty"`
-    NestedInstallerFiles []struct {
-        RelativeFilePath string `yaml:"RelativeFilePath"`
-        PortableCommandAlias string `yaml:"PortableCommandAlias" json:",omitempty"`
-    } `yaml:"NestedInstallerFiles" json:",omitempty"`
+    NestedInstallerFiles []API_NestedInstallerFile_1_4_0 `yaml:"NestedInstallerFiles" json:",omitempty"`
     DisplayInstallWarnings bool `yaml:"DisplayInstallWarnings" json:",omitempty"`
     UnsupportedArguments []string `yaml:"UnsupportedArguments" json:",omitempty"`
-    InstallationMetadata struct {
-        DefaultInstallLocation string `yaml:"DefaultInstallLocation" json:",omitempty"`
-        Files []struct {
-            RelativeFilePath string `yaml:"RelativeFilePath"`
-            FileSha256 string `yaml:"FileSha256" json:",omitempty"`
-            FileType string `yaml:"FileType" json:",omitempty"`
-            InvocationParameter string `yaml:"InvocationParameter" json:",omitempty"`
-            DisplayName string `yaml:"DisplayName" json:",omitempty"`
-        } `yaml:"Files" json:",omitempty"`
-    } `yaml:"InstallationMetadata"`
+    InstallationMetadata API_InstallationMetadata_1_4_0 `yaml:"InstallationMetadata"`
 }
 
 func (in API_Installer_1_4_0) dummyFunc() bool {
@@ -261,3 +249,18 @@ type Documentation_1_4_0 struct {
     DocumentUrl string `yaml:"DocumentUrl"`
 }
 
+type API_InstallationMetadata_1_4_0 struct {
+    DefaultInstallLocation string `yaml:"DefaultInstallLocation" json:",omitempty"`
+    Files []struct {
+        RelativeFilePath string `yaml:"RelativeFilePath"`
+        FileSha256 string `yaml:"FileSha256" json:",omitempty"`
+        FileType string `yaml:"FileType" json:",omitempty"`
+        InvocationParameter string `yaml:"InvocationParameter" json:",omitempty"`
+        DisplayName string `yaml:"DisplayName" json:",omitempty"`
+    } `yaml:"Files" json:",omitempty"`
+}
+
+type API_NestedInstallerFile_1_4_0 struct {
+    RelativeFilePath string `yaml:"RelativeFilePath"`
+    PortableCommandAlias string `yaml:"PortableCommandAlias" json:",omitempty"`
+}
