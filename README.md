@@ -10,17 +10,17 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so com
 - Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
 - Add your own manifests for internal or customized software
 - Search, list, show and install software - the core winget features
+- Package manifest versions 1.1.0, 1.2.0 and 1.4.0 are all supported simultaneously
 - Runs on Windows, Linux and in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
 
 ## 🚧 Not Yet Working or Complete
 
-- Only package manifest versions 1.1.0 and 1.2.0 are supported currently (no support for old 1.0.0 manifests)
 - Correlation of installed programs and programs in the repository is not perfect (in part due to [this](https://github.com/microsoft/winget-cli-restsource/issues/59) and [this](https://github.com/microsoft/winget-cli-restsource/issues/166))
 - Live reload of manifests (works for new and changed manifests, but removals are only picked up on restart)
 - Authentication (it's currently [not supported by winget](https://github.com/microsoft/winget-cli-restsource/issues/100))
 - Probably other stuff? It's work-in-progress - please submit an issue and/or PR if you notice anything!
 
-## ✅ Getting Started
+## 🧭 Getting Started
 
 You can run rewinged, even without any arguments or configuration, and test the API by opening
 `http://localhost:8080/information` or `http://localhost:8080/packages` in a browser or with
@@ -112,3 +112,5 @@ rewinged: Run `./rewinged -help` to see all available command-line options.
 winget-cli-restsource: https://github.com/microsoft/winget-cli-restsource
 
 winget restsource API: https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml
+
+If you have trouble, questions or suggestions about rewinged please open an issue!
