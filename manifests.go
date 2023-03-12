@@ -122,6 +122,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
           version = &models.Manifest_VersionManifest_1_1_0{}
         } else if multifilemanifest.ManifestVersion == "1.2.0" {
           version = &models.Manifest_VersionManifest_1_2_0{}
+        } else if multifilemanifest.ManifestVersion == "1.4.0" {
+          version = &models.Manifest_VersionManifest_1_4_0{}
         } else {
           log.Println("Unsupported VersionManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -137,6 +139,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
           installer = &models.Manifest_InstallerManifest_1_1_0{}
         } else if multifilemanifest.ManifestVersion == "1.2.0" {
           installer = &models.Manifest_InstallerManifest_1_2_0{}
+        } else if multifilemanifest.ManifestVersion == "1.4.0" {
+          installer = &models.Manifest_InstallerManifest_1_4_0{}
         } else {
           log.Println("Unsupported InstallerManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -152,6 +156,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
           locale = &models.Manifest_LocaleManifest_1_1_0{}
         } else if multifilemanifest.ManifestVersion == "1.2.0" {
           locale = &models.Manifest_LocaleManifest_1_2_0{}
+        } else if multifilemanifest.ManifestVersion == "1.4.0" {
+          locale = &models.Manifest_LocaleManifest_1_4_0{}
         } else {
           log.Println("Unsupported LocaleManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -166,6 +172,8 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
           defaultlocale = &models.Manifest_DefaultLocaleManifest_1_1_0{}
         } else if multifilemanifest.ManifestVersion == "1.2.0" {
           defaultlocale = &models.Manifest_DefaultLocaleManifest_1_2_0{}
+        } else if multifilemanifest.ManifestVersion == "1.4.0" {
+          defaultlocale = &models.Manifest_DefaultLocaleManifest_1_4_0{}
         } else {
           log.Println("Unsupported DefaultLocaleManifest version", multifilemanifest.ManifestVersion, file)
           continue
@@ -247,7 +255,7 @@ func newApiManifest (
       PackageIdentifier: PackageIdentifier,
       Versions: []models.API_ManifestVersionInterface{ api_mvi },
     }
-  } else if ManifestVersion == "1.2.0" {
+  } else if ManifestVersion == "1.2.0" || ManifestVersion == "1.4.0" {
     var apiLocales []models.API_Locale_1_4_0
     for _, locale := range l {
       apiLocales = append(apiLocales, locale.(models.API_Locale_1_4_0))
