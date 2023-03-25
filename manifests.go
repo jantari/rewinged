@@ -56,13 +56,13 @@ func ingestManifestsWorker() error {
     if len(nonSingletonsMap) > 0 {
       for key, value := range nonSingletonsMap {
         fmt.Println("  Found multi-file manifests for package", key.PackageIdentifier)
-        var merged_manifest, err = parseMultiFileManifest(key, value...)
+        var mergedManifest, err = parseMultiFileManifest(key, value...)
         if err != nil {
           log.Println("Could not parse the manifest files for this package", key.PackageIdentifier, err)
         } else {
-          for _, version := range merged_manifest.GetVersions() {
+          for _, version := range mergedManifest.GetVersions() {
             // Replace the existing PkgId + PkgVersion entry with this one
-            models.Manifests.Set(merged_manifest.GetPackageIdentifier(), version.GetPackageVersion(), version)
+            models.Manifests.Set(mergedManifest.GetPackageIdentifier(), version.GetPackageVersion(), version)
           }
         }
       }
@@ -206,7 +206,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
   var apiInstallers []models.API_InstallerInterface
   apiInstallers = append(apiInstallers, installers[0].ToApiInstallers()...)
 
-  manifest, err := newApiManifest(
+  manifest, err := newAPIManifest(
     multifilemanifest.ManifestVersion,
     multifilemanifest.PackageIdentifier,
     versions[0].GetPackageVersion(),
@@ -218,7 +218,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
   return manifest, err
 }
 
-func newApiManifest (
+func newAPIManifest (
   ManifestVersion string,
   PackageIdentifier string,
   pv string,
@@ -229,8 +229,8 @@ func newApiManifest (
   models.API_ManifestInterface,
   error,
 ) {
-  var api_ret models.API_ManifestInterface
-  var api_mvi models.API_ManifestVersionInterface
+  var apiReturnManifest models.API_ManifestInterface
+  var apiMvi models.API_ManifestVersionInterface
 
   if ManifestVersion == "1.1.0" {
     var apiLocales []models.API_Locale_1_1_0
@@ -243,7 +243,7 @@ func newApiManifest (
       apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_1_0))
     }
 
-    api_mvi = models.API_ManifestVersion_1_1_0{
+    apiMvi = models.API_ManifestVersion_1_1_0{
       PackageVersion: pv,
       DefaultLocale: dl.(models.API_DefaultLocale_1_1_0),
       Channel: "",
@@ -251,9 +251,9 @@ func newApiManifest (
       Installers: apiInstallers,
     }
 
-    api_ret = &models.API_Manifest_1_1_0 {
+    apiReturnManifest = &models.API_Manifest_1_1_0 {
       PackageIdentifier: PackageIdentifier,
-      Versions: []models.API_ManifestVersionInterface{ api_mvi },
+      Versions: []models.API_ManifestVersionInterface{ apiMvi },
     }
   } else if ManifestVersion == "1.2.0" || ManifestVersion == "1.4.0" {
     var apiLocales []models.API_Locale_1_4_0
@@ -266,7 +266,7 @@ func newApiManifest (
       apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_4_0))
     }
 
-    api_mvi = models.API_ManifestVersion_1_4_0{
+    apiMvi = models.API_ManifestVersion_1_4_0{
       PackageVersion: pv,
       DefaultLocale: dl.(models.API_DefaultLocale_1_4_0),
       Channel: "",
@@ -274,15 +274,15 @@ func newApiManifest (
       Installers: apiInstallers,
     }
 
-    api_ret = &models.API_Manifest_1_4_0 {
+    apiReturnManifest = &models.API_Manifest_1_4_0 {
       PackageIdentifier: PackageIdentifier,
-      Versions: []models.API_ManifestVersionInterface{ api_mvi },
+      Versions: []models.API_ManifestVersionInterface{ apiMvi },
     }
   } else {
     return nil, errors.New("Converting manifest v" + ManifestVersion + " data for API responses is not yet supported.")
   }
 
-  return api_ret, nil
+  return apiReturnManifest, nil
 }
 
 func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
