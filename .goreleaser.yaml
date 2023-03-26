@@ -47,7 +47,7 @@ release:
   draft: true
 
 dockers:
-  - use: docker
+  - use: buildx
     ids: [linux]
     dockerfile: Dockerfile.goreleaser
     image_templates:
