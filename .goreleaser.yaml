@@ -27,6 +27,7 @@ builds:
       - -X 'main.commit={{.ShortCommit}}' # set commit information in-program
       - -X 'main.compileTime={{.Date}}' # set timestamp information in-program
       - -X 'main.releaseMode=true' # set gin to releaseMode
+    env: [CGO_ENABLED=0]
     goos: [linux]
     goarch: [amd64]
     goamd64: [v1]
@@ -42,5 +43,23 @@ changelog:
 
 release:
   name_template: "Version {{.Version}}"
+  prerelease: auto
   draft: true
 
+dockers:
+  - use: docker
+    ids: [linux]
+    dockerfile: Dockerfile.goreleaser
+    image_templates:
+      - ghcr.io/jantari/rewinged:latest
+      - ghcr.io/jantari/rewinged:{{.Version}}
+      - "{{ if not .Prerelease }}ghcr.io/jantari/rewinged:stable{{ end }}"
+    build_flag_templates:
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.title=rewinged"
+      - "--label=org.opencontainers.image.description=rewinged is a self-hosted winget package source"
+      - "--label=org.opencontainers.image.url=github.com/jantari/rewinged"
+      - "--label=org.opencontainers.image.source=github.com/jantari/rewinged"
+      - "--label=org.opencontainers.image.licenses=MIT"

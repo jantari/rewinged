@@ -7,10 +7,12 @@ on:
     tags:
       - '*'
 
-# Required to publish artifacts, see:
+# contents: write is required to publish artifacts,
+# packages: write is required to push container images.
 # https://goreleaser.com/ci/actions/#token-permissions
 permissions:
   contents: write
+  packages: write
 
 jobs:
   build:
@@ -40,6 +42,13 @@ jobs:
       - name: Install goversioninfo
         run: |
           go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4

@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+
+FROM scratch
+
+COPY <<EOF /etc/passwd
+rewinged:x:10002:10002:rewinged:/:/rewinged
+EOF
+
+# WORKDIR creates directories if they don't exist; with 755 and owned by root
+WORKDIR /packages
+WORKDIR /
+
+COPY rewinged /rewinged
+
+USER rewinged
+ENTRYPOINT ["/rewinged"]
+
