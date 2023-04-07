@@ -9,7 +9,10 @@ import (
     "flag"
     "sync"
     "time"
+    "strings"
     "path/filepath"
+
+    "github.com/peterbourgon/ff/v3"
 
     "github.com/gin-gonic/gin"
     "github.com/rjeczalik/notify" // for live-reload of manifests
@@ -28,15 +31,34 @@ var wg sync.WaitGroup
 var jobs chan string = make(chan string)
 
 func main() {
-    versionFlagPtr := flag.Bool("version", false, "Print the version information and exit")
-    packagePathPtr := flag.String("manifestPath", "./packages", "The directory to search for package manifest files")
+    fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+    var (
+        versionFlagPtr = fs.Bool("version", false, "Print the version information and exit")
+        packagePathPtr = fs.String("manifestPath", "./packages", "The directory to search for package manifest files")
 
-    tlsEnablePtr := flag.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
-    tlsCertificatePtr := flag.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
-    tlsPrivateKeyPtr := flag.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
-    listenAddrPtr := flag.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
+        tlsEnablePtr      = fs.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
+        tlsCertificatePtr = fs.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
+        tlsPrivateKeyPtr  = fs.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
+        listenAddrPtr     = fs.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
+        _                 = fs.String("configFile", "", "Path to a json configuration file (optional)")
+    )
 
-    flag.Parse()
+    // Ingest configuration flags.
+    // Commandline arguments > Environment variables > config file
+    err := ff.Parse(fs, os.Args[1:],
+        ff.WithEnvVarPrefix("REWINGED"),
+        ff.WithConfigFileFlag("configFile"),
+        ff.WithConfigFileParser(ff.JSONParser),
+    )
+
+    if err != nil {
+        // Replicate default ExitOnError behavior of exiting with 0 when -h/-help/--help is used
+        if strings.HasSuffix(err.Error(), "help requested") {
+            os.Exit(0)
+        }
+        fmt.Println(err)
+        os.Exit(2)
+    }
 
     if *versionFlagPtr {
         fmt.Printf("rewinged %v\n\ncommit:\t\t%v\ncompiled:\t%v\n", version, commit, compileTime)

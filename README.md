@@ -22,6 +22,26 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so com
 
 ## 🧭 Getting Started
 
+### 💾 Binaries
+
+Download the latest [release](https://github.com/jantari/rewinged/releases), extract and run it!
+
+### 🐋 Docker
+
+```
+docker run \
+  -e REWINGED_LISTEN='0.0.0.0:8080' \
+  -p 8080:8080 \
+  -v ${PWD}/packages:/packages:ro \
+  ghcr.io/jantari/rewinged:stable
+```
+
+### ⚙️ Configuration
+
+rewinged can be configured through commandline arguments, environment variables and a JSON configuration file.
+
+### 🪄 Using rewinged
+
 You can run rewinged, even without any arguments or configuration, and test the API by opening
 `http://localhost:8080/information` or `http://localhost:8080/packages` in a browser or with
 `curl` / `Invoke-RestMethod`.
