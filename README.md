@@ -33,7 +33,7 @@ docker run \
   -e REWINGED_LISTEN='0.0.0.0:8080' \
   -p 8080:8080 \
   -v ${PWD}/packages:/packages:ro \
-  ghcr.io/jantari/rewinged:0.3.1-rc.2
+  ghcr.io/jantari/rewinged:0.4.0
 ```
 
 ### ⚙️ Configuration
