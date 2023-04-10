@@ -3,7 +3,7 @@
 rewinged is a self-hosted winget package source. It's portable and can run on Linux, Windows, in Docker, locally and in any cloud.
 rewinged reads your package manifests from a directory and makes them searchable and accessable to winget via a REST API.
 
-It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so command-line args, output and behavior may change at any time!
+It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so configuration options, output and behavior may change at any time!
 
 ## 🚀 Features
 
@@ -11,7 +11,7 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so com
 - Add your own manifests for internal or customized software
 - Search, list, show and install software - the core winget features
 - Package manifest versions 1.1.0, 1.2.0 and 1.4.0 are all supported simultaneously
-- Runs on Windows, Linux and in [Docker](https://github.com/jantari/rewinged/blob/main/Dockerfile)
+- Runs on Windows, Linux and in Docker
 
 ## 🚧 Not Yet Working or Complete
 
@@ -33,22 +33,79 @@ docker run \
   -e REWINGED_LISTEN='0.0.0.0:8080' \
   -p 8080:8080 \
   -v ${PWD}/packages:/packages:ro \
-  ghcr.io/jantari/rewinged:stable
+  ghcr.io/jantari/rewinged:0.3.1-rc.2
 ```
 
 ### ⚙️ Configuration
 
 rewinged can be configured through commandline arguments, environment variables and a JSON configuration file.
 
+<details>
+<summary><b>Commandline Arguments</b></summary>
+
+Commandline arguments have the highest priority and take precedence over both environment variables and the configuration file.
+
+```
+  -configFile string
+        Path to a json configuration file (optional)
+  -https
+        Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy
+  -httpsCertificateFile string
+        The webserver certificate to use if HTTPS is enabled (default "./cert.pem")
+  -httpsPrivateKeyFile string
+        The private key file to use if HTTPS is enabled (default "./private.key")
+  -listen string
+        The address and port for the REST API to listen on (default "localhost:8080")
+  -manifestPath string
+        The directory to search for package manifest files (default "./packages")
+  -version
+        Print the version information and exit
+```
+
+</details>
+
+<details>
+<summary><b>Environment Variables</b></summary>
+
+Environment variables take precedence over the configuration file, but are overridden by any commandline arguments if passed.
+
+```
+REWINGED_CONFIGFILE (string)
+REWINGED_HTTPS (bool)
+REWINGED_HTTPSCERTIFICATEFILE (string)
+REWINGED_HTTPSPRIVATEKEYFILE (string)
+REWINGED_LISTEN (string)
+REWINGED_MANIFESTPATH (string)
+```
+
+</details>
+
+<details>
+<summary><b>Configuration File</b></summary>
+
+Use the `-configFile` argument or `REWINGED_CONFIGFILE` environment variable to enable the config file option.
+rewinged will not look for any configuration file by default. Config file must be valid JSON.
+
+```json
+{
+  "https": false,
+  "httpsCertificateFile": "./cert.pem",
+  "httpsPrivateKeyFile": "./private.key",
+  "listen": "localhost:8080",
+  "manifestPath": "./packages"
+}
+```
+
+</details>
+
 ### 🪄 Using rewinged
 
-You can run rewinged, even without any arguments or configuration, and test the API by opening
-`http://localhost:8080/information` or `http://localhost:8080/packages` in a browser or with
-`curl` / `Invoke-RestMethod`.
+You can run rewinged and test the API by opening `http://localhost:8080/information`
+or `http://localhost:8080/packages` in a browser or with `curl` / `Invoke-RestMethod`.
 
 But to use it with winget you will have to set up HTTPS because winget **requires**
-REST-sources to use HTTPS - plaintext HTTP is not allowed. If you do not have a PKI
-or a certificate from a publicly trusted CA like Let's Encrypt you can use then you
+REST-sources to use HTTPS - plaintext HTTP is not allowed. If you do not have an internal
+PKI or a certificate from a publicly trusted CA like Let's Encrypt you can use then you
 can generate and trust a new self-signed certificate for testing purposes:
 
 <details>
@@ -89,13 +146,13 @@ Remove-Item $cert.PSPath
 ```
 </details>
 
-Then, you can run rewinged with HTTPS enabled:
+Then, run rewinged with HTTPS enabled:
 
 ```
 ./rewinged -https -listen localhost:8443
 ```
 
-and add it as a package source in winget:
+add it as a package source in winget:
 
 ```
 winget source add -n rewinged-local -a https://localhost:8443 -t "Microsoft.Rest"
