@@ -1,10 +1,11 @@
 package models
 
 import (
-    "fmt"
     "sync"
     "strings"
     "reflect"
+
+    "rewinged/logging"
 )
 
 // This is used when discovering manifest
@@ -310,7 +311,7 @@ func (ms *ManifestsStore) GetByMatchFilter (
 
       // All filters and inclusions have passed for this manifest, add it to the returned map
       if anyInclusionMatched {
-        fmt.Println("Adding to the results map:", packageIdentifier, "version", packageVersion.GetPackageVersion())
+        logging.Logger.Debug().Msgf("adding to the results map: %v version %v", packageIdentifier, packageVersion.GetPackageVersion())
         manifestResultsMap[packageIdentifier] = append(manifestResultsMap[packageIdentifier], packageVersion)
       }
     }

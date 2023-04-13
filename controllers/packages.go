@@ -1,8 +1,6 @@
 package controllers
 
 import (
-    "log"
-
     "github.com/gin-gonic/gin"
 
     "rewinged/logging"
@@ -98,7 +96,7 @@ func SearchForPackage(c *gin.Context) {
       c.JSON(204, response)
     }
   } else {
-    log.Println("error deserializing json post body %v\n", err)
+    logging.Logger.Error().Err(err).Msg("error deserializing json post body")
   }
 }
 

@@ -130,8 +130,10 @@ func main() {
     if releaseMode == "true" {
         gin.SetMode(gin.ReleaseMode)
     }
-    router := gin.Default()
+    router := gin.New()
     router.SetTrustedProxies(nil)
+    router.Use(logging.GinLogger())
+    router.Use(gin.Recovery())
     router.GET("/information", controllers.GetInformation)
     router.GET("/packages", controllers.GetPackages)
     router.POST("/manifestSearch", controllers.SearchForPackage)
