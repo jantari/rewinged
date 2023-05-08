@@ -57,7 +57,7 @@ func ingestManifestsWorker() error {
         logging.Logger.Debug().Msgf("found multi-file manifests for package %v", key.PackageIdentifier)
         var mergedManifest, err = parseMultiFileManifest(key, value...)
         if err != nil {
-          logging.Logger.Error().AnErr("error", err).Msgf("Could not parse the manifest files for this package %v", key.PackageIdentifier)
+          logging.Logger.Error().Err(err).Msgf("Could not parse the manifest files for this package %v", key.PackageIdentifier)
         } else {
           for _, version := range mergedManifest.GetVersions() {
             // Replace the existing PkgId + PkgVersion entry with this one
@@ -79,7 +79,7 @@ func ingestManifestsWorker() error {
 func getManifests (path string) {
   files, err := os.ReadDir(path)
   if err != nil {
-    logging.Logger.Error().AnErr("error", err)
+    logging.Logger.Error().Err(err)
   }
 
   // wg.Add() before goroutine, see staticcheck check SA2000 and also

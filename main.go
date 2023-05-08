@@ -95,7 +95,7 @@ func main() {
     // correlate filenames to packages anyway so there's no way to know which
     // package is affected by the event.
     if err := notify.Watch(*packagePathPtr + "/...", fileEventsChannel, notify.Create, notify.Write); err != nil {
-        logging.Logger.Fatal().AnErr("string", err)
+        logging.Logger.Fatal().Err(err)
     }
     defer notify.Stop(fileEventsChannel)
 
