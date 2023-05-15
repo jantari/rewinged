@@ -121,7 +121,7 @@ func main() {
             }
 
             ei := <- fileEventsChannel
-            logging.Logger.Debug().Msgf("Received event (type %T):\n\t%+v\n", ei, ei)
+            logging.Logger.Debug().Msgf("received event (type %T):\n\t%+v\n", ei, ei)
             wg.Add(1)
             jobs <- filepath.Dir(ei.Path())
         }

@@ -38,7 +38,7 @@ func ingestManifestsWorker() error {
             basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
             if basemanifest.ManifestType == "singleton" {
               var manifest = parseFileAsSingletonManifest(path + "/" + file.Name())
-              logging.Logger.Debug().Msgf("Found singleton manifest for package %v", basemanifest.PackageIdentifier)
+              logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
               models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, manifest.GetVersions()[0])
             } else {
               typeAndPath := models.ManifestTypeAndPath{
@@ -54,10 +54,10 @@ func ingestManifestsWorker() error {
 
     if len(nonSingletonsMap) > 0 {
       for key, value := range nonSingletonsMap {
-        logging.Logger.Debug().Str("package", key.PackageIdentifier).Msgf("found multi-file manifests")
+        logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("found multi-file manifest")
         var mergedManifest, err = parseMultiFileManifest(key, value...)
         if err != nil {
-          logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Msgf("Could not parse all manifest files for this package")
+          logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("could not parse all manifest files for this package")
         } else {
           for _, version := range mergedManifest.GetVersions() {
             // Replace the existing PkgId + PkgVersion entry with this one
@@ -124,7 +124,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           version = &models.Manifest_VersionManifest_1_4_0{}
         } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("Unsupported VersionManifest version %v", multifilemanifest.ManifestVersion)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported VersionManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, version)
@@ -141,7 +141,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           installer = &models.Manifest_InstallerManifest_1_4_0{}
         } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("Unsupported InstallerManifest version %v", multifilemanifest.ManifestVersion)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported InstallerManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, installer)
@@ -158,7 +158,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           locale = &models.Manifest_LocaleManifest_1_4_0{}
         } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("Unsupported LocaleManifest version %v", multifilemanifest.ManifestVersion)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported LocaleManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, locale)
@@ -174,7 +174,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           defaultlocale = &models.Manifest_DefaultLocaleManifest_1_4_0{}
         } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("Unsupported DefaultLocaleManifest version %v", multifilemanifest.ManifestVersion)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported DefaultLocaleManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, defaultlocale)
@@ -187,10 +187,10 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
 
   // It's possible there were no installer or locale manifests or parsing them failed
   if len(installers) == 0 {
-    return nil, errors.New(multifilemanifest.PackageVersion + " package manifests did not contain any (valid) installers")
+    return nil, errors.New("no (valid) installer manifest")
   }
   if len(versions) == 0 {
-    return nil, errors.New("package manifests did not contain any (valid) locales")
+    return nil, errors.New("no (valid) locale manifest")
   }
 
   // This transforms the manifest data into the format the API will return.
