@@ -1,14 +1,13 @@
 package main
 
 import (
-  "fmt"
-  "log"
   "os"
   "errors"
   "strings"
 
   "gopkg.in/yaml.v3"
 
+  "rewinged/logging"
   "rewinged/models"
 )
 
@@ -16,7 +15,7 @@ func ingestManifestsWorker() error {
   for path := range jobs {
     files, err := os.ReadDir(path)
     if err != nil {
-      log.Println("ingestManifestsWorker error", err)
+      logging.Logger.Error().Err(err).Msg("ingestManifestsWorker error")
       wg.Done()
       continue
     }
@@ -29,7 +28,7 @@ func ingestManifestsWorker() error {
         if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
           var basemanifest, err = parseFileAsBaseManifest(path + "/" + file.Name())
           if err != nil {
-            log.Printf("error unmarshaling YAML file '%v' as BaseManifest: %v, SKIPPING\n", path + "/" + file.Name(), err)
+            logging.Logger.Error().Err(err).Str("file", path + "/" + file.Name()).Msgf("cannot unmarshal YAML file as BaseManifest")
             continue
           }
 
@@ -39,7 +38,7 @@ func ingestManifestsWorker() error {
             basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
             if basemanifest.ManifestType == "singleton" {
               var manifest = parseFileAsSingletonManifest(path + "/" + file.Name())
-              fmt.Println("  Found singleton manifest for package", basemanifest.PackageIdentifier)
+              logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
               models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, manifest.GetVersions()[0])
             } else {
               typeAndPath := models.ManifestTypeAndPath{
@@ -55,10 +54,10 @@ func ingestManifestsWorker() error {
 
     if len(nonSingletonsMap) > 0 {
       for key, value := range nonSingletonsMap {
-        fmt.Println("  Found multi-file manifests for package", key.PackageIdentifier)
+        logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("found multi-file manifest")
         var mergedManifest, err = parseMultiFileManifest(key, value...)
         if err != nil {
-          log.Println("Could not parse the manifest files for this package", key.PackageIdentifier, err)
+          logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("could not parse all manifest files for this package")
         } else {
           for _, version := range mergedManifest.GetVersions() {
             // Replace the existing PkgId + PkgVersion entry with this one
@@ -80,7 +79,7 @@ func ingestManifestsWorker() error {
 func getManifests (path string) {
   files, err := os.ReadDir(path)
   if err != nil {
-    log.Println(err)
+    logging.Logger.Error().Err(err)
   }
 
   // wg.Add() before goroutine, see staticcheck check SA2000 and also
@@ -92,7 +91,7 @@ func getManifests (path string) {
 
   for _, file := range files {
     if file.IsDir() {
-      fmt.Printf("Searching directory: %s\n", path + "/" + file.Name())
+      logging.Logger.Trace().Msgf("searching directory %s", path + "/" + file.Name())
 
       getManifests(path + "/" + file.Name())
     }
@@ -112,7 +111,7 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
   for _, file := range files {
     yamlFile, err := os.ReadFile(file.FilePath)
     if err != nil {
-      log.Printf("yamlFile.Get err   #%v ", err)
+      logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot read file")
       continue
     }
     switch file.ManifestType {
@@ -125,12 +124,12 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           version = &models.Manifest_VersionManifest_1_4_0{}
         } else {
-          log.Println("Unsupported VersionManifest version", multifilemanifest.ManifestVersion, file)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported VersionManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, version)
         if err != nil {
-          log.Printf("error unmarshalling version-manifest %v\n", err)
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal version-manifest")
         }
         versions = append(versions, version)
       case "installer":
@@ -142,12 +141,12 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           installer = &models.Manifest_InstallerManifest_1_4_0{}
         } else {
-          log.Println("Unsupported InstallerManifest version", multifilemanifest.ManifestVersion, file)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported InstallerManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, installer)
         if err != nil {
-          log.Printf("error unmarshalling installer-manifest %v\n", err)
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal installer-manifest")
         }
         installers = append(installers, installer)
       case "locale":
@@ -159,12 +158,12 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           locale = &models.Manifest_LocaleManifest_1_4_0{}
         } else {
-          log.Println("Unsupported LocaleManifest version", multifilemanifest.ManifestVersion, file)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported LocaleManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, locale)
         if err != nil {
-          log.Printf("error unmarshalling locale-manifest %v\n", err)
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal locale-manifest")
         }
         locales = append(locales, locale)
       case "defaultLocale":
@@ -175,12 +174,12 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
         } else if multifilemanifest.ManifestVersion == "1.4.0" {
           defaultlocale = &models.Manifest_DefaultLocaleManifest_1_4_0{}
         } else {
-          log.Println("Unsupported DefaultLocaleManifest version", multifilemanifest.ManifestVersion, file)
+          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported DefaultLocaleManifest version %v", multifilemanifest.ManifestVersion)
           continue
         }
         err = yaml.Unmarshal(yamlFile, defaultlocale)
         if err != nil {
-          log.Printf("error unmarshalling defaultlocale-manifest %v\n", err)
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal defaultlocale-manifest")
         }
       default:
     }
@@ -188,10 +187,10 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
 
   // It's possible there were no installer or locale manifests or parsing them failed
   if len(installers) == 0 {
-    return nil, errors.New(multifilemanifest.PackageVersion + " package manifests did not contain any (valid) installers")
+    return nil, errors.New("no (valid) installer manifest")
   }
   if len(versions) == 0 {
-    return nil, errors.New("package manifests did not contain any (valid) locales")
+    return nil, errors.New("no (valid) locale manifest")
   }
 
   // This transforms the manifest data into the format the API will return.
@@ -299,13 +298,13 @@ func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
 func parseFileAsSingletonManifest (path string) models.API_ManifestInterface {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
-    log.Printf("error opening yaml file %v\n", err)
+    logging.Logger.Error().Err(err).Msg("error opening yaml file")
   }
 
   singleton := &models.Manifest_SingletonManifest_1_1_0{}
   err = yaml.Unmarshal(yamlFile, singleton)
   if err != nil {
-    log.Printf("error unmarshalling singleton %v\n", err)
+    logging.Logger.Error().Err(err).Msg("error unmarshalling singleton")
   }
 
   manifest := singletonToStandardManifest(singleton)

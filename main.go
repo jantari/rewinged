@@ -4,7 +4,6 @@ package main
 
 import (
     "fmt"
-    "log"
     "os"
     "flag"
     "sync"
@@ -12,11 +11,13 @@ import (
     "strings"
     "path/filepath"
 
+    // Configuration
     "github.com/peterbourgon/ff/v3"
 
     "github.com/gin-gonic/gin"
     "github.com/rjeczalik/notify" // for live-reload of manifests
 
+    "rewinged/logging"
     "rewinged/models"
     "rewinged/controllers"
 )
@@ -40,6 +41,7 @@ func main() {
         tlsCertificatePtr = fs.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
         tlsPrivateKeyPtr  = fs.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
         listenAddrPtr     = fs.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
+        logLevelPtr       = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
         _                 = fs.String("configFile", "", "Path to a json configuration file (optional)")
     )
 
@@ -65,7 +67,9 @@ func main() {
         os.Exit(0)
     }
 
-    fmt.Println("Searching for manifests...")
+    logging.InitLogger(*logLevelPtr, releaseMode == "true")
+
+    logging.Logger.Debug().Msg("searching for manifests")
     // Start up 10 worker goroutines that can parse in manifest-files from one directory each
     for w := 1; w <= 6; w++ {
         go ingestManifestsWorker()
@@ -78,9 +82,9 @@ func main() {
     // if manifests is just a reference-copy of manifests2 then it wouldn't be I think?
     // But *currently* since live-reload isn't implemented yet, manifests2 won't be written
     // to after this point so it's safe for now - TODO: only access manifests2 in a thread-safe way
-    fmt.Println("Found", models.Manifests.GetManifestCount(), "package manifests.")
+    logging.Logger.Info().Msgf("found %v package manifests", models.Manifests.GetManifestCount())
 
-    fmt.Println("Watching manifestPath for changes ...")
+    logging.Logger.Info().Msg("watching manifestPath for changes")
     // Make the channel buffered to try and not miss events. Notify will drop
     // an event if the receiver is not able to keep up the sending pace.
     fileEventsBuffer := 100
@@ -91,7 +95,7 @@ func main() {
     // correlate filenames to packages anyway so there's no way to know which
     // package is affected by the event.
     if err := notify.Watch(*packagePathPtr + "/...", fileEventsChannel, notify.Create, notify.Write); err != nil {
-        log.Fatal(err)
+        logging.Logger.Fatal().Err(err)
     }
     defer notify.Stop(fileEventsChannel)
 
@@ -104,7 +108,8 @@ func main() {
             // period of time, thus necessitating further full rescans
             for len(fileEventsChannel) == fileEventsBuffer {
                 // If the channel is ever full we are missing events as the notify package drops them at this point
-                log.Println("\x1b[31mfileEventsChannel full - we're missing events - will perform full manifest rescan\x1b[0m")
+                //log.Println("\x1b[31mfileEventsChannel full - we're missing events - will perform full manifest rescan\x1b[0m")
+                logging.Logger.Info().Msg("fileEventsChannel full - we're missing events - will perform full manifest rescan")
                 // Wait out the thundering herd - events have been lost anyway
                 time.Sleep(5 * time.Second)
                 // Drop all events to clear the channel, this also enables new events to stream in again
@@ -116,7 +121,7 @@ func main() {
             }
 
             ei := <- fileEventsChannel
-            log.Printf("Received event (type %T):\n\t%+v\n", ei, ei)
+            logging.Logger.Debug().Msgf("received event (type %T):\n\t%+v\n", ei, ei)
             wg.Add(1)
             jobs <- filepath.Dir(ei.Path())
         }
@@ -125,21 +130,23 @@ func main() {
     if releaseMode == "true" {
         gin.SetMode(gin.ReleaseMode)
     }
-    router := gin.Default()
+    router := gin.New()
     router.SetTrustedProxies(nil)
+    router.Use(logging.GinLogger())
+    router.Use(gin.Recovery())
     router.GET("/information", controllers.GetInformation)
     router.GET("/packages", controllers.GetPackages)
     router.POST("/manifestSearch", controllers.SearchForPackage)
     router.GET("/packageManifests/:package_identifier", controllers.GetPackage)
 
-    fmt.Println("Starting server on", *listenAddrPtr)
+    logging.Logger.Info().Msgf("starting server on %v", *listenAddrPtr)
     if *tlsEnablePtr {
         if err := router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr); err != nil {
-            log.Fatal("error could not start webserver:", err)
+            logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     } else {
         if err := router.Run(*listenAddrPtr); err != nil {
-            log.Fatal("error could not start webserver:", err)
+            logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     }
 }

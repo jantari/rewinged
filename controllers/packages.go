@@ -1,11 +1,9 @@
 package controllers
 
 import (
-    "fmt"
-    "log"
-
     "github.com/gin-gonic/gin"
 
+    "rewinged/logging"
     "rewinged/models"
 )
 
@@ -14,13 +12,12 @@ func GetPackages(c *gin.Context) {
         Data: models.Manifests.GetAllPackageIdentifiers(),
     }
 
-    fmt.Println(response)
+    logging.Logger.Debug().Msgf("%v", response)
     c.JSON(200, response)
 }
 
 func GetPackage(c *gin.Context) {
-  fmt.Println("/packageManifests: Someone tried to GET package '", c.Param("package_identifier"), "'")
-  fmt.Println("with query params:", c.Request.URL.Query())
+  logging.Logger.Debug().Msgf("/packageManifests: Someone tried to GET package '%v' with query params: %v", c.Param("package_identifier"), c.Request.URL.Query())
 
   response := models.API_ManifestSingleResponse_1_1_0 {
     RequiredQueryParameters: []string{},
@@ -30,7 +27,7 @@ func GetPackage(c *gin.Context) {
 
   var pkg []models.API_ManifestVersionInterface = models.Manifests.GetAllVersions(c.Param("package_identifier"))
   if len(pkg) > 0 {
-    fmt.Println("the package was found!")
+    logging.Logger.Debug().Msgf("the package was found")
 
     response.Data = &models.API_Manifest_1_1_0{
       PackageIdentifier: c.Param("package_identifier"),
@@ -39,7 +36,7 @@ func GetPackage(c *gin.Context) {
 
     c.JSON(200, response)
   } else {
-    fmt.Println("the package was NOT found!")
+    logging.Logger.Debug().Msgf("the package was not found")
     c.JSON(404, models.API_WingetApiError{
       ErrorCode: 404,
       ErrorMessage: "The specified package was not found.",
@@ -50,7 +47,7 @@ func GetPackage(c *gin.Context) {
 func SearchForPackage(c *gin.Context) {
   var post models.API_ManifestSearchRequest_1_1_0
   if err := c.BindJSON(&post); err == nil {
-    fmt.Printf("%+v\n", post)
+    logging.Logger.Debug().Msgf("%+v", post)
     response := &models.API_ManifestSearchResult[models.API_ManifestSearchVersion_1_1_0]{
       RequiredPackageMatchFields: []string{},
       Data: []models.API_ManifestSearchResponse[models.API_ManifestSearchVersion_1_1_0] {},
@@ -62,18 +59,18 @@ func SearchForPackage(c *gin.Context) {
     var results map[string][]models.API_ManifestVersionInterface
 
     if post.Query.KeyWord != "" {
-      fmt.Println("someone searched the repo for:", post.Query.KeyWord)
+      logging.Logger.Debug().Msgf("someone searched the repo for: %v", post.Query.KeyWord)
       results = models.Manifests.GetByKeyword(post.Query.KeyWord)
     } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
-      fmt.Println("advanced search with inclusions[] and/or filters[]")
+      logging.Logger.Debug().Msg("advanced search with inclusions[] and/or filters[]")
       results = models.Manifests.GetByMatchFilter(post.Inclusions, post.Filters)
     }
 
-    fmt.Println("... with", len(results), "results:")
+    logging.Logger.Debug().Msgf("with %v results", len(results))
 
     if len(results) > 0 {
       for packageId, packageVersions := range results {
-        fmt.Println("  package", packageId, "with", len(packageVersions), "versions.")
+        logging.Logger.Debug().Msgf("package %v with %v versions", packageId, len(packageVersions))
         var versions []models.API_ManifestSearchVersion_1_1_0
 
         for _, version := range packageVersions {
@@ -92,14 +89,14 @@ func SearchForPackage(c *gin.Context) {
           Versions: versions,
         })
       }
-      fmt.Printf("%+v\n", response)
+      logging.Logger.Debug().Msgf("%+v", response)
       c.JSON(200, response)
     } else {
       // winget REST-API specification calls for a 204 return code if no results were found
       c.JSON(204, response)
     }
   } else {
-    log.Println("error deserializing json post body %v\n", err)
+    logging.Logger.Error().Err(err).Msg("error deserializing json post body")
   }
 }
 
