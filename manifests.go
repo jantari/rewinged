@@ -108,6 +108,8 @@ func unmarshalVersionManifest (manifestVersion string, yamlData []byte) (models.
           version = &models.Manifest_VersionManifest_1_2_0{}
         case "1.4.0":
           version = &models.Manifest_VersionManifest_1_4_0{}
+        case "1.5.0":
+          version = &models.Manifest_VersionManifest_1_5_0{}
         default:
           return nil, errors.New("unsupported VersionManifest version " + manifestVersion)
     }
@@ -130,6 +132,8 @@ func unmarshalInstallerManifest (manifestVersion string, yamlData []byte) (model
             installer = &models.Manifest_InstallerManifest_1_2_0{}
         case "1.4.0":
             installer = &models.Manifest_InstallerManifest_1_4_0{}
+        case "1.5.0":
+            installer = &models.Manifest_InstallerManifest_1_5_0{}
         default:
             return nil, errors.New("unsupported InstallerManifest version " + manifestVersion)
     }
@@ -152,6 +156,8 @@ func unmarshalLocaleManifest (manifestVersion string, yamlData []byte) (models.M
             locale = &models.Manifest_LocaleManifest_1_2_0{}
         case "1.4.0":
             locale = &models.Manifest_LocaleManifest_1_4_0{}
+        case "1.5.0":
+            locale = &models.Manifest_LocaleManifest_1_5_0{}
         default:
             return nil, errors.New("unsupported LocaleManifest version " + manifestVersion)
     }
@@ -174,6 +180,8 @@ func unmarshalDefaultLocaleManifest (manifestVersion string, yamlData []byte) (m
             defaultlocale = &models.Manifest_DefaultLocaleManifest_1_2_0{}
         case "1.4.0":
             defaultlocale = &models.Manifest_DefaultLocaleManifest_1_4_0{}
+        case "1.5.0":
+            defaultlocale = &models.Manifest_DefaultLocaleManifest_1_5_0{}
         default:
             return nil, errors.New("unsupported DefaultLocaleManifest version " + manifestVersion)
     }
@@ -307,6 +315,8 @@ func newAPIManifest (
       Versions: []models.API_ManifestVersionInterface{ apiMvi },
     }
   } else if ManifestVersion == "1.2.0" || ManifestVersion == "1.4.0" {
+    // There is no API schema 1.2.0, so both v1.2.0 and v1.4.0
+    // packages are returned to clients as v1.4.0 API responses
     var apiLocales []models.API_Locale_1_4_0
     for _, locale := range l {
       apiLocales = append(apiLocales, locale.(models.API_Locale_1_4_0))
@@ -326,6 +336,29 @@ func newAPIManifest (
     }
 
     apiReturnManifest = &models.API_Manifest_1_4_0 {
+      PackageIdentifier: PackageIdentifier,
+      Versions: []models.API_ManifestVersionInterface{ apiMvi },
+    }
+  } else if ManifestVersion == "1.5.0" {
+    var apiLocales []models.API_Locale_1_5_0
+    for _, locale := range l {
+      apiLocales = append(apiLocales, locale.(models.API_Locale_1_5_0))
+    }
+
+    var apiInstallers []models.API_Installer_1_5_0
+    for _, intf := range inst {
+      apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_5_0))
+    }
+
+    apiMvi = models.API_ManifestVersion_1_5_0{
+      PackageVersion: pv,
+      DefaultLocale: dl.(models.API_DefaultLocale_1_5_0),
+      Channel: "",
+      Locales: apiLocales,
+      Installers: apiInstallers,
+    }
+
+    apiReturnManifest = &models.API_Manifest_1_5_0 {
       PackageIdentifier: PackageIdentifier,
       Versions: []models.API_ManifestVersionInterface{ apiMvi },
     }

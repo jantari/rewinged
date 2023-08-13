@@ -27,6 +27,9 @@ type BaseManifest struct {
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
+// This function reduces a BaseManifest to the data fields that will be
+// identical for all manifest files belonging to the same package.
+// This allows multi-manifest files to be correlated to a single package.
 func (basemanifest BaseManifest) ToMultiFileManifest() MultiFileManifest {
     return MultiFileManifest{
         PackageIdentifier: basemanifest.PackageIdentifier,
