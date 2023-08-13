@@ -10,7 +10,7 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so con
 - Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
 - Add your own manifests for internal or customized software
 - Search, list, show and install software - the core winget features
-- Package manifest versions 1.1.0, 1.2.0 and 1.4.0 are all supported simultaneously
+- Package manifest versions 1.1.0, 1.2.0, 1.4.0 and 1.5.0 are all supported simultaneously
 - Runs on Windows, Linux and in Docker
 
 ## 🚧 Not Yet Working or Complete
