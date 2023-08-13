@@ -98,6 +98,94 @@ func getManifests (path string) {
   }
 }
 
+func unmarshalVersionManifest (manifestVersion string, yamlData []byte) (models.Manifest_VersionManifestInterface, error) {
+    var version models.Manifest_VersionManifestInterface
+
+    switch manifestVersion {
+        case "1.1.0":
+          version = &models.Manifest_VersionManifest_1_1_0{}
+        case "1.2.0":
+          version = &models.Manifest_VersionManifest_1_2_0{}
+        case "1.4.0":
+          version = &models.Manifest_VersionManifest_1_4_0{}
+        default:
+          return nil, errors.New("unsupported VersionManifest version " + manifestVersion)
+    }
+
+    err := yaml.Unmarshal(yamlData, version)
+    if err != nil {
+      return nil, err
+    }
+
+    return version, nil
+}
+
+func unmarshalInstallerManifest (manifestVersion string, yamlData []byte) (models.Manifest_InstallerManifestInterface, error) {
+    var installer models.Manifest_InstallerManifestInterface
+
+    switch manifestVersion {
+        case "1.1.0":
+            installer = &models.Manifest_InstallerManifest_1_1_0{}
+        case "1.2.0":
+            installer = &models.Manifest_InstallerManifest_1_2_0{}
+        case "1.4.0":
+            installer = &models.Manifest_InstallerManifest_1_4_0{}
+        default:
+            return nil, errors.New("unsupported InstallerManifest version " + manifestVersion)
+    }
+
+    err := yaml.Unmarshal(yamlData, installer)
+    if err != nil {
+      return nil, err
+    }
+
+    return installer, nil
+}
+
+func unmarshalLocaleManifest (manifestVersion string, yamlData []byte) (models.Manifest_LocaleManifestInterface, error) {
+    var locale models.Manifest_LocaleManifestInterface
+
+    switch manifestVersion {
+        case "1.1.0":
+            locale = &models.Manifest_LocaleManifest_1_1_0{}
+        case "1.2.0":
+            locale = &models.Manifest_LocaleManifest_1_2_0{}
+        case "1.4.0":
+            locale = &models.Manifest_LocaleManifest_1_4_0{}
+        default:
+            return nil, errors.New("unsupported LocaleManifest version " + manifestVersion)
+    }
+
+    err := yaml.Unmarshal(yamlData, locale)
+    if err != nil {
+        return nil, err
+    }
+
+    return locale, nil
+}
+
+func unmarshalDefaultLocaleManifest (manifestVersion string, yamlData []byte) (models.Manifest_DefaultLocaleManifestInterface, error) {
+    var defaultlocale models.Manifest_DefaultLocaleManifestInterface
+
+    switch manifestVersion {
+        case "1.1.0":
+            defaultlocale = &models.Manifest_DefaultLocaleManifest_1_1_0{}
+        case "1.2.0":
+            defaultlocale = &models.Manifest_DefaultLocaleManifest_1_2_0{}
+        case "1.4.0":
+            defaultlocale = &models.Manifest_DefaultLocaleManifest_1_4_0{}
+        default:
+            return nil, errors.New("unsupported DefaultLocaleManifest version " + manifestVersion)
+    }
+
+    err := yaml.Unmarshal(yamlData, defaultlocale)
+    if err != nil {
+        return nil, err
+    }
+
+    return defaultlocale, nil
+}
+
 func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files ...models.ManifestTypeAndPath) (models.API_ManifestInterface, error) {
   if len(files) <= 0 {
     return nil, errors.New("you must provide at least one filename for reading values")
@@ -117,69 +205,33 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
     switch file.ManifestType {
       case "version":
         var version models.Manifest_VersionManifestInterface
-        if multifilemanifest.ManifestVersion == "1.1.0" {
-          version = &models.Manifest_VersionManifest_1_1_0{}
-        } else if multifilemanifest.ManifestVersion == "1.2.0" {
-          version = &models.Manifest_VersionManifest_1_2_0{}
-        } else if multifilemanifest.ManifestVersion == "1.4.0" {
-          version = &models.Manifest_VersionManifest_1_4_0{}
-        } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported VersionManifest version %v", multifilemanifest.ManifestVersion)
-          continue
-        }
-        err = yaml.Unmarshal(yamlFile, version)
+        version, err = unmarshalVersionManifest(multifilemanifest.ManifestVersion, yamlFile)
         if err != nil {
-          logging.Logger.Error().Err(err).Msg("cannot unmarshal version-manifest")
+          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          continue
         }
         versions = append(versions, version)
       case "installer":
         var installer models.Manifest_InstallerManifestInterface
-        if multifilemanifest.ManifestVersion == "1.1.0" {
-          installer = &models.Manifest_InstallerManifest_1_1_0{}
-        } else if multifilemanifest.ManifestVersion == "1.2.0" {
-          installer = &models.Manifest_InstallerManifest_1_2_0{}
-        } else if multifilemanifest.ManifestVersion == "1.4.0" {
-          installer = &models.Manifest_InstallerManifest_1_4_0{}
-        } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported InstallerManifest version %v", multifilemanifest.ManifestVersion)
-          continue
-        }
-        err = yaml.Unmarshal(yamlFile, installer)
+        installer, err = unmarshalInstallerManifest(multifilemanifest.ManifestVersion, yamlFile)
         if err != nil {
-          logging.Logger.Error().Err(err).Msg("cannot unmarshal installer-manifest")
+          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          continue
         }
         installers = append(installers, installer)
       case "locale":
         var locale models.Manifest_LocaleManifestInterface
-        if multifilemanifest.ManifestVersion == "1.1.0" {
-          locale = &models.Manifest_LocaleManifest_1_1_0{}
-        } else if multifilemanifest.ManifestVersion == "1.2.0" {
-          locale = &models.Manifest_LocaleManifest_1_2_0{}
-        } else if multifilemanifest.ManifestVersion == "1.4.0" {
-          locale = &models.Manifest_LocaleManifest_1_4_0{}
-        } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported LocaleManifest version %v", multifilemanifest.ManifestVersion)
-          continue
-        }
-        err = yaml.Unmarshal(yamlFile, locale)
+        locale, err = unmarshalLocaleManifest(multifilemanifest.ManifestVersion, yamlFile)
         if err != nil {
-          logging.Logger.Error().Err(err).Msg("cannot unmarshal locale-manifest")
+          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          continue
         }
         locales = append(locales, locale)
       case "defaultLocale":
-        if multifilemanifest.ManifestVersion == "1.1.0" {
-          defaultlocale = &models.Manifest_DefaultLocaleManifest_1_1_0{}
-        } else if multifilemanifest.ManifestVersion == "1.2.0" {
-          defaultlocale = &models.Manifest_DefaultLocaleManifest_1_2_0{}
-        } else if multifilemanifest.ManifestVersion == "1.4.0" {
-          defaultlocale = &models.Manifest_DefaultLocaleManifest_1_4_0{}
-        } else {
-          logging.Logger.Error().Str("file", file.FilePath).Msgf("unsupported DefaultLocaleManifest version %v", multifilemanifest.ManifestVersion)
-          continue
-        }
-        err = yaml.Unmarshal(yamlFile, defaultlocale)
+        defaultlocale, err = unmarshalDefaultLocaleManifest(multifilemanifest.ManifestVersion, yamlFile)
         if err != nil {
-          logging.Logger.Error().Err(err).Msg("cannot unmarshal defaultlocale-manifest")
+          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          continue
         }
       default:
     }
