@@ -5,6 +5,9 @@ import (
   "os"
   "errors"
   "strings"
+  "io"
+  "io/fs"
+  "net/http"
 
   "gopkg.in/yaml.v3"
 
@@ -44,11 +47,38 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
               // Singleton manifests can only contain version of a package each
               var version = manifest.GetVersions()[0]
 
+              // Internalization logic
               if (autoInternalize) {
-                /// Internalization logic (rewriting InstallerUrls on ingest)
-                var installers = version.GetInstallers()
+                var installers []models.API_InstallerInterface = version.GetInstallers()
 
                 for _, v := range installers {
+                  var destFile string = fmt.Sprintf("./installers/%s", strings.ToLower(v.GetInstallerSha()))
+                  // Why os.OpenFile instead of os.Create:
+                  // https://stackoverflow.com/a/22483001
+                  out, err := os.OpenFile(destFile, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0666)
+                  defer out.Close()
+                  if err != nil {
+                    if errors.Is(err, fs.ErrExist) {
+                      logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("file already exists, not redownloading %s", destFile)
+                    } else {
+                      logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot create file %s", destFile)
+                      continue
+                    }
+                  } else {
+                    // No error, we could open the file for writing and it does not exist yet - so download it
+                    logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("downloading installer")
+
+                    resp, err := http.Get(v.GetInstallerUrl())
+                    if err != nil {
+                      logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot download file %s", v.GetInstallerUrl())
+                    }
+                    defer resp.Body.Close()
+
+                    n, err := io.Copy(out, resp.Body)
+                    logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("downloaded installer, %d bytes written", n)
+                  }
+
+                  // Rewrite the installers' InstallerUrl
                   logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("internalizing InstallerUrl")
                   v.SetInstallerUrl(fmt.Sprintf("%s/%s", globalInstallerUrl, strings.ToLower(v.GetInstallerSha())))
                 }
@@ -68,8 +98,8 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
                 }
 
                 version = manifest.GetVersions()[0]
-                /// End internalization logic
               }
+              // End internalization logic
 
               models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
             } else {
@@ -92,11 +122,38 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
           logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("could not parse all manifest files for this package")
         } else {
           for _, version := range mergedManifest.GetVersions() {
+            // Internalization logic
             if (autoInternalize) {
-              /// Internalization logic (rewriting InstallerUrls on ingest)
               var installers []models.API_InstallerInterface = version.GetInstallers()
 
               for _, v := range installers {
+                var destFile string = fmt.Sprintf("./installers/%s", strings.ToLower(v.GetInstallerSha()))
+                // Why os.OpenFile instead of os.Create:
+                // https://stackoverflow.com/a/22483001
+                out, err := os.OpenFile(destFile, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0666)
+                defer out.Close()
+                if err != nil {
+                  if errors.Is(err, fs.ErrExist) {
+                    logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("file already exists, not redownloading %s", destFile)
+                  } else {
+                    logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot create file %s", destFile)
+                    continue
+                  }
+                } else {
+                  // No error, we could open the file for writing and it does not exist yet - so download it
+                  logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("downloading installer")
+
+                  resp, err := http.Get(v.GetInstallerUrl())
+                  if err != nil {
+                    logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot download file %s", v.GetInstallerUrl())
+                  }
+                  defer resp.Body.Close()
+
+                  n, err := io.Copy(out, resp.Body)
+                  logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("downloaded installer, %d bytes written", n)
+                }
+
+                // Rewrite the installers' InstallerUrl
                 logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("internalizing InstallerUrl")
                 v.SetInstallerUrl(fmt.Sprintf("%s/%s", globalInstallerUrl, strings.ToLower(v.GetInstallerSha())))
               }
@@ -116,8 +173,8 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
               }
 
               version = overwrittenMergedManifest.GetVersions()[0]
-              /// End internalization logic
             }
+            // End internalization logic
 
             // Replace the existing PkgId + PkgVersion entry with this one
             models.Manifests.Set(mergedManifest.GetPackageIdentifier(), version.GetPackageVersion(), version)
