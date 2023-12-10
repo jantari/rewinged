@@ -124,7 +124,7 @@ func (instm Manifest_InstallerManifest_1_5_0) ToApiInstallers() []API_InstallerI
         instm_API_NestedInstallerFiles = append(instm_API_NestedInstallerFiles, API_NestedInstallerFile_1_5_0(nif))
     }
 
-    apiInstallers = append(apiInstallers, API_Installer_1_5_0 {
+    apiInstallers = append(apiInstallers, &API_Installer_1_5_0 {
       InstallerIdentifier: "", // This is in the API schema but idk where to get it from
       InstallerLocale: nonDefault(installer.InstallerLocale, instm.InstallerLocale),
       Architecture: installer.Architecture, // Already mandatory per-Installer

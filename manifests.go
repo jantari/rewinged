@@ -1,6 +1,7 @@
 package main
 
 import (
+  "fmt"
   "os"
   "errors"
   "strings"
@@ -11,7 +12,7 @@ import (
   "rewinged/models"
 )
 
-func ingestManifestsWorker() error {
+func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) error {
   for path := range jobs {
     files, err := os.ReadDir(path)
     if err != nil {
@@ -39,7 +40,38 @@ func ingestManifestsWorker() error {
             if basemanifest.ManifestType == "singleton" {
               var manifest = parseFileAsSingletonManifest(path + "/" + file.Name())
               logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
-              models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, manifest.GetVersions()[0])
+
+              // Singleton manifests can only contain version of a package each
+              var version = manifest.GetVersions()[0]
+
+              if (autoInternalize) {
+                /// Internalization logic (rewriting InstallerUrls on ingest)
+                var installers = version.GetInstallers()
+
+                for _, v := range installers {
+                  logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("internalizing InstallerUrl")
+                  v.SetInstallerUrl(fmt.Sprintf("%s/%s", globalInstallerUrl, strings.ToLower(v.GetInstallerSha())))
+                }
+
+                // Recreate manifest object, but with overwritten values (InstallerUrl(s))
+                manifest, err = newAPIManifest(
+                  basemanifest.ManifestVersion,
+                  basemanifest.PackageIdentifier,
+                  basemanifest.PackageVersion,
+                  version.GetDefaultLocale(),
+                  version.GetLocales(),
+                  installers,
+                )
+
+                if err != nil {
+                  logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("error reconstructing package after overwrite")
+                }
+
+                version = manifest.GetVersions()[0]
+                /// End internalization logic
+              }
+
+              models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
             } else {
               typeAndPath := models.ManifestTypeAndPath{
                 ManifestType: basemanifest.ManifestType,
@@ -60,6 +92,33 @@ func ingestManifestsWorker() error {
           logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("could not parse all manifest files for this package")
         } else {
           for _, version := range mergedManifest.GetVersions() {
+            if (autoInternalize) {
+              /// Internalization logic (rewriting InstallerUrls on ingest)
+              var installers []models.API_InstallerInterface = version.GetInstallers()
+
+              for _, v := range installers {
+                logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("internalizing InstallerUrl")
+                v.SetInstallerUrl(fmt.Sprintf("%s/%s", globalInstallerUrl, strings.ToLower(v.GetInstallerSha())))
+              }
+
+              // Recreate manifest object, but with overwritten values (InstallerUrl(s))
+              overwrittenMergedManifest, err := newAPIManifest(
+                key.ManifestVersion,
+                key.PackageIdentifier,
+                key.PackageVersion,
+                version.GetDefaultLocale(),
+                version.GetLocales(),
+                installers,
+              )
+
+              if err != nil {
+                logging.Logger.Error().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("error reconstructing package after overwrite")
+              }
+
+              version = overwrittenMergedManifest.GetVersions()[0]
+              /// End internalization logic
+            }
+
             // Replace the existing PkgId + PkgVersion entry with this one
             models.Manifests.Set(mergedManifest.GetPackageIdentifier(), version.GetPackageVersion(), version)
           }
@@ -263,7 +322,12 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
   }
 
   var apiInstallers []models.API_InstallerInterface
-  apiInstallers = append(apiInstallers, installers[0].ToApiInstallers()...)
+
+  // In case there are more than 1 InstallerManifests per package (not sure if officially allowed)
+  // we get all the installers defined in all the InstallerManifest files.
+  for _, v := range installers {
+    apiInstallers = append(apiInstallers, v.ToApiInstallers()...)
+  }
 
   manifest, err := newAPIManifest(
     multifilemanifest.ManifestVersion,
@@ -299,7 +363,7 @@ func newAPIManifest (
 
     var apiInstallers []models.API_Installer_1_1_0
     for _, intf := range inst {
-      apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_1_0))
+      apiInstallers = append(apiInstallers, *intf.(*models.API_Installer_1_1_0))
     }
 
     apiMvi = models.API_ManifestVersion_1_1_0{
@@ -324,7 +388,7 @@ func newAPIManifest (
 
     var apiInstallers []models.API_Installer_1_4_0
     for _, intf := range inst {
-      apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_4_0))
+      apiInstallers = append(apiInstallers, *intf.(*models.API_Installer_1_4_0))
     }
 
     apiMvi = models.API_ManifestVersion_1_4_0{
@@ -347,7 +411,7 @@ func newAPIManifest (
 
     var apiInstallers []models.API_Installer_1_5_0
     for _, intf := range inst {
-      apiInstallers = append(apiInstallers, intf.(models.API_Installer_1_5_0))
+      apiInstallers = append(apiInstallers, *intf.(*models.API_Installer_1_5_0))
     }
 
     apiMvi = models.API_ManifestVersion_1_5_0{

@@ -27,10 +27,16 @@ type API_ManifestVersionInterface interface {
     GetDefaultLocalePublisher() string
     GetDefaultLocaleShortDescription() string
     GetPackageVersion() string
+    GetDefaultLocale() API_DefaultLocaleInterface
+    GetLocales() []API_LocaleInterface
+    GetInstallers() []API_InstallerInterface
     GetInstallerProductCodes() []string
 }
 
 type API_InstallerInterface interface {
+    GetInstallerSha() string
+    GetInstallerUrl() string
+    SetInstallerUrl(newUrl string)
     dummyFunc() bool
 }
 

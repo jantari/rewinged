@@ -106,7 +106,7 @@ func (instm Manifest_InstallerManifest_1_2_0) ToApiInstallers() []API_InstallerI
       instm_API_ExpectedReturnCodes = append(instm_API_ExpectedReturnCodes, API_ExpectedReturnCode_1_4_0(erc))
     }
 
-    apiInstallers = append(apiInstallers, API_Installer_1_4_0 {
+    apiInstallers = append(apiInstallers, &API_Installer_1_4_0 {
       InstallerIdentifier: "", // This is in the API schema but idk where to get it from
       InstallerLocale: nonDefault(installer.InstallerLocale, instm.InstallerLocale),
       Architecture: installer.Architecture, // Already mandatory per-Installer

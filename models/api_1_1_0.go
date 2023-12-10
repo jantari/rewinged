@@ -45,6 +45,34 @@ func (ver API_ManifestVersion_1_1_0) GetInstallerProductCodes() []string {
     return productCodes
 }
 
+func (ver API_ManifestVersion_1_1_0) GetDefaultLocale() API_DefaultLocaleInterface {
+    return ver.DefaultLocale
+}
+
+func (ver API_ManifestVersion_1_1_0) GetLocales() []API_LocaleInterface {
+    var locales []API_LocaleInterface
+
+    for _, locale := range ver.Locales {
+        locales = append(locales, locale)
+    }
+
+    return locales
+}
+
+func (ver API_ManifestVersion_1_1_0) GetInstallers() []API_InstallerInterface {
+    var installerInterfaces []API_InstallerInterface
+
+    // We cannot use a range ver.Installers {} loop here because range loops
+    // always put the current element in the loop into the same one memory address.
+    // So if we collect/append the pointers to the installers in the loop, they
+    // will all just point to the same memory location chosen by range.
+    for i := 0; i < len(ver.Installers); i++ {
+        installerInterfaces = append(installerInterfaces, &ver.Installers[i])
+    }
+
+    return installerInterfaces
+}
+
 type API_Manifest_1_1_0 struct {
     PackageIdentifier string
     Versions []API_ManifestVersionInterface
@@ -104,8 +132,20 @@ type API_Installer_1_1_0 struct {
     ElevationRequirement string `yaml:"ElevationRequirement" json:",omitempty"`
 }
 
-func (in API_Installer_1_1_0) dummyFunc() bool {
+func (in *API_Installer_1_1_0) dummyFunc() bool {
     return false
+}
+
+func (in *API_Installer_1_1_0) GetInstallerSha() string {
+    return in.InstallerSha256
+}
+
+func (in *API_Installer_1_1_0) GetInstallerUrl() string {
+    return in.InstallerUrl
+}
+
+func (in *API_Installer_1_1_0) SetInstallerUrl(newUrl string) {
+    in.InstallerUrl = newUrl
 }
 
 // API Locale schema
