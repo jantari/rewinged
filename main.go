@@ -9,6 +9,7 @@ import (
     "sync"
     "time"
     "strings"
+    "unicode"
     "path/filepath"
 
     // Configuration
@@ -37,13 +38,14 @@ func main() {
         versionFlagPtr = fs.Bool("version", false, "Print the version information and exit")
         packagePathPtr = fs.String("manifestPath", "./packages", "The directory to search for package manifest files")
 
-        tlsEnablePtr       = fs.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
-        tlsCertificatePtr  = fs.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
-        tlsPrivateKeyPtr   = fs.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
-        listenAddrPtr      = fs.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
-        autoInternalizePtr = fs.Bool("autoInternalize", false, "Turn on the auto-internalization feature")
-        logLevelPtr        = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
-        _                  = fs.String("configFile", "", "Path to a json configuration file (optional)")
+        tlsEnablePtr           = fs.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
+        tlsCertificatePtr      = fs.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
+        tlsPrivateKeyPtr       = fs.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
+        listenAddrPtr          = fs.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
+        autoInternalizePtr     = fs.Bool("autoInternalize", false, "Turn on the auto-internalization feature")
+        autoInternalizeSkipPtr = fs.String("autoInternalizeSkip", "", "List of hostnames excluded from auto-internalization (comma or space to separate)")
+        logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
+        _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
     )
 
     // Ingest configuration flags.
@@ -79,8 +81,13 @@ func main() {
     } else {
         globalInstallerUrl = fmt.Sprintf("http://%s/installers", *listenAddrPtr)
     }
+
+    autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
+        return unicode.IsSpace(c) || c == ','
+    })
+
     for w := 1; w <= 6; w++ {
-        go ingestManifestsWorker(*autoInternalizePtr, globalInstallerUrl)
+        go ingestManifestsWorker(*autoInternalizePtr, globalInstallerUrl, autoInternalizeSkipHosts)
     }
 
     getManifests(*packagePathPtr)

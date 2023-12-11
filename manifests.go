@@ -4,9 +4,11 @@ import (
   "fmt"
   "os"
   "errors"
+  "slices"
   "strings"
   "io"
   "io/fs"
+  "net/url"
   "net/http"
 
   "gopkg.in/yaml.v3"
@@ -15,7 +17,7 @@ import (
   "rewinged/models"
 )
 
-func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) error {
+func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, autoInternalizeSkipHosts []string) error {
   for path := range jobs {
     files, err := os.ReadDir(path)
     if err != nil {
@@ -52,6 +54,17 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
                 var installers []models.API_InstallerInterface = version.GetInstallers()
 
                 for _, v := range installers {
+                  var originalInstallerUrl string = v.GetInstallerUrl()
+                  u, err := url.Parse(originalInstallerUrl)
+                  if err != nil {
+                    logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot parse InstallerUrl %s", originalInstallerUrl)
+                    continue
+                  }
+                  if slices.Contains(autoInternalizeSkipHosts, u.Hostname()) {
+                    logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("not internalizing %s", originalInstallerUrl)
+                    continue
+                  }
+
                   var destFile string = fmt.Sprintf("./installers/%s", strings.ToLower(v.GetInstallerSha()))
                   // Why os.OpenFile instead of os.Create:
                   // https://stackoverflow.com/a/22483001
@@ -68,9 +81,9 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
                     // No error, we could open the file for writing and it does not exist yet - so download it
                     logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("downloading installer")
 
-                    resp, err := http.Get(v.GetInstallerUrl())
+                    resp, err := http.Get(originalInstallerUrl)
                     if err != nil {
-                      logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot download file %s", v.GetInstallerUrl())
+                      logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot download file %s", originalInstallerUrl)
                     }
                     defer resp.Body.Close()
 
@@ -127,6 +140,17 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
               var installers []models.API_InstallerInterface = version.GetInstallers()
 
               for _, v := range installers {
+                var originalInstallerUrl string = v.GetInstallerUrl()
+                u, err := url.Parse(originalInstallerUrl)
+                if err != nil {
+                  logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot parse InstallerUrl %s", originalInstallerUrl)
+                  continue
+                }
+                if slices.Contains(autoInternalizeSkipHosts, u.Hostname()) {
+                  logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("not internalizing %s", originalInstallerUrl)
+                  continue
+                }
+
                 var destFile string = fmt.Sprintf("./installers/%s", strings.ToLower(v.GetInstallerSha()))
                 // Why os.OpenFile instead of os.Create:
                 // https://stackoverflow.com/a/22483001
@@ -143,9 +167,9 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string) erro
                   // No error, we could open the file for writing and it does not exist yet - so download it
                   logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("downloading installer")
 
-                  resp, err := http.Get(v.GetInstallerUrl())
+                  resp, err := http.Get(originalInstallerUrl)
                   if err != nil {
-                    logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot download file %s", v.GetInstallerUrl())
+                    logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot download file %s", originalInstallerUrl)
                   }
                   defer resp.Body.Close()
 
