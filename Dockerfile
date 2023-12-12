@@ -19,6 +19,7 @@ EOF
 
 # WORKDIR creates directories if they don't exist; with 755 and owned by root
 WORKDIR /packages
+WORKDIR /installers
 WORKDIR /
 
 COPY --from=builder /tmp/rewinged /rewinged

@@ -10,6 +10,7 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so con
 - Directly serve [unmodified winget package manifests](https://github.com/microsoft/winget-pkgs/tree/master/manifests)
 - Add your own manifests for internal or customized software
 - Search, list, show and install software - the core winget features
+- Automatically internalize package installers to serve them to machines without internet
 - Package manifest versions 1.1.0, 1.2.0, 1.4.0 and 1.5.0 are all supported simultaneously
 - Runs on Windows, Linux and in Docker
 
@@ -46,6 +47,12 @@ rewinged can be configured through commandline arguments, environment variables 
 Commandline arguments have the highest priority and take precedence over both environment variables and the configuration file.
 
 ```
+  -autoInternalize
+        Turn on the auto-internalization feature
+  -autoInternalizePath string
+        The directory where auto-internalized installers will be stored (default "./installers")
+  -autoInternalizeSkip string
+        List of hostnames excluded from auto-internalization (comma or space to separate)
   -configFile string
         Path to a json configuration file (optional)
   -https
@@ -56,6 +63,8 @@ Commandline arguments have the highest priority and take precedence over both en
         The private key file to use if HTTPS is enabled (default "./private.key")
   -listen string
         The address and port for the REST API to listen on (default "localhost:8080")
+  -logLevel string
+        Set log verbosity: disable, error, warn, info, debug or trace (default "info")
   -manifestPath string
         The directory to search for package manifest files (default "./packages")
   -version
@@ -71,6 +80,9 @@ Environment variables take precedence over the configuration file, but are overr
 
 ```
 REWINGED_CONFIGFILE (string)
+REWINGED_AUTOINTERNALIZE (bool)
+REWINGED_AUTOINTERNALIZEPATH (string)
+REWINGED_AUTOINTERNALIZESKIP (string)
 REWINGED_HTTPS (bool)
 REWINGED_HTTPSCERTIFICATEFILE (string)
 REWINGED_HTTPSPRIVATEKEYFILE (string)
@@ -88,6 +100,9 @@ rewinged will not look for any configuration file by default. Config file must b
 
 ```json
 {
+  "autoInternalize": false,
+  "autoInternalizePath": "./installers",
+  "autoInternalizeSkip": "",
   "https": false,
   "httpsCertificateFile": "./cert.pem",
   "httpsPrivateKeyFile": "./private.key",
@@ -180,6 +195,24 @@ Successfully installed
 
 ~ took 8s
 ❯
+```
+
+## 🤖 Auto-Internalization
+
+With auto-internalization enabled, rewinged will automatically:
+
+1. Download all installers referenced in your package manifests (InstallerUrl fields)
+2. Serve all of the downloaded installer files itself, locally, on the `/installers/` URL-path
+3. Dynamically rewrite all InstallerUrls returned from its APIs to point to itself instead of the original source
+
+You can choose a path where rewinged will store the downloaded installers with `autoInternalizePath`
+and you can exempt a list of hostnames from being auto-internalized with `autoInternalizeSkip`.
+This is useful if you have custom manifests that already point to internal sources and there is no
+need to re-internalize them again, or when certain installers are very large and you just don't want
+to store them locally. For example:
+
+```
+./rewinged -autoInternalize -autoInternalizeSkip "internal.example.org github.com"
 ```
 
 ## Helpful reference documentation
