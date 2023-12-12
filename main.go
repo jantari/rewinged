@@ -74,12 +74,12 @@ func main() {
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
 
     logging.Logger.Debug().Msg("searching for manifests")
-    var internalizedInstallerUrl string
+    var internalizedInstallerURL string
     // TODO: check whether this allows for any kind of injection attack/crash with weird URLs?
     if *tlsEnablePtr {
-        internalizedInstallerUrl = fmt.Sprintf("https://%s/installers", *listenAddrPtr)
+        internalizedInstallerURL = fmt.Sprintf("https://%s/installers", *listenAddrPtr)
     } else {
-        internalizedInstallerUrl = fmt.Sprintf("http://%s/installers", *listenAddrPtr)
+        internalizedInstallerURL = fmt.Sprintf("http://%s/installers", *listenAddrPtr)
     }
 
     autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
@@ -88,7 +88,7 @@ func main() {
 
     // Start up 6 worker goroutines that can parse in manifest-files from one directory each
     for w := 1; w <= 6; w++ {
-        go ingestManifestsWorker(*autoInternalizePtr, *autoInternalizePathPtr, internalizedInstallerUrl, autoInternalizeSkipHosts)
+        go ingestManifestsWorker(*autoInternalizePtr, *autoInternalizePathPtr, internalizedInstallerURL, autoInternalizeSkipHosts)
     }
 
     getManifests(*packagePathPtr)
