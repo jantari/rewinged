@@ -10,6 +10,7 @@ import (
   "io/fs"
   "net/url"
   "net/http"
+  "path/filepath"
 
   "gopkg.in/yaml.v3"
 
@@ -17,7 +18,7 @@ import (
   "rewinged/models"
 )
 
-func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, autoInternalizeSkipHosts []string) error {
+func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, internalizedInstallerUrl string, autoInternalizeSkipHosts []string) error {
   for path := range jobs {
     files, err := os.ReadDir(path)
     if err != nil {
@@ -32,9 +33,9 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
     for _, file := range files {
       if !file.IsDir() {
         if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
-          var basemanifest, err = parseFileAsBaseManifest(path + "/" + file.Name())
+          var basemanifest, err = parseFileAsBaseManifest(filepath.Join(path, file.Name()))
           if err != nil {
-            logging.Logger.Error().Err(err).Str("file", path + "/" + file.Name()).Msgf("cannot unmarshal YAML file as BaseManifest")
+            logging.Logger.Error().Err(err).Str("file", filepath.Join(path, file.Name())).Msgf("cannot unmarshal YAML file as BaseManifest")
             continue
           }
 
@@ -43,7 +44,7 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
           if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
             basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
             if basemanifest.ManifestType == "singleton" {
-              var manifest = parseFileAsSingletonManifest(path + "/" + file.Name())
+              var manifest = parseFileAsSingletonManifest(filepath.Join(path, file.Name()))
               logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
 
               // Singleton manifests can only contain version of a package each
@@ -65,7 +66,7 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
                     continue
                   }
 
-                  var destFile string = fmt.Sprintf("./installers/%s", strings.ToLower(v.GetInstallerSha()))
+                  var destFile string = filepath.Join(autoInternalizePath, strings.ToLower(v.GetInstallerSha()))
                   // Why os.OpenFile instead of os.Create:
                   // https://stackoverflow.com/a/22483001
                   out, err := os.OpenFile(destFile, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0666)
@@ -86,14 +87,18 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
                       logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot download file %s", originalInstallerUrl)
                     }
                     defer resp.Body.Close()
+                    if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+                      logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("cannot download file %s (http status %d)", originalInstallerUrl, resp.StatusCode)
+                      continue
+                    }
 
                     n, err := io.Copy(out, resp.Body)
                     logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("downloaded installer, %d bytes written", n)
                   }
 
                   // Rewrite the installers' InstallerUrl
-                  logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("internalizing InstallerUrl")
-                  v.SetInstallerUrl(fmt.Sprintf("%s/%s", globalInstallerUrl, strings.ToLower(v.GetInstallerSha())))
+                  logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("internalizing %v", originalInstallerUrl)
+                  v.SetInstallerUrl(fmt.Sprintf("%s/%s", internalizedInstallerUrl, strings.ToLower(v.GetInstallerSha())))
                 }
 
                 // Recreate manifest object, but with overwritten values (InstallerUrl(s))
@@ -118,7 +123,7 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
             } else {
               typeAndPath := models.ManifestTypeAndPath{
                 ManifestType: basemanifest.ManifestType,
-                FilePath: path + "/" + file.Name(),
+                FilePath: filepath.Join(path, file.Name()),
               }
               nonSingletonsMap[basemanifest.ToMultiFileManifest()] = append(nonSingletonsMap[basemanifest.ToMultiFileManifest()], typeAndPath)
             }
@@ -151,7 +156,7 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
                   continue
                 }
 
-                var destFile string = fmt.Sprintf("./installers/%s", strings.ToLower(v.GetInstallerSha()))
+                var destFile string = filepath.Join(autoInternalizePath, strings.ToLower(v.GetInstallerSha()))
                 // Why os.OpenFile instead of os.Create:
                 // https://stackoverflow.com/a/22483001
                 out, err := os.OpenFile(destFile, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0666)
@@ -172,14 +177,18 @@ func ingestManifestsWorker(autoInternalize bool, globalInstallerUrl string, auto
                     logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot download file %s", originalInstallerUrl)
                   }
                   defer resp.Body.Close()
+                  if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+                    logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("cannot download file %s (http status %d)", originalInstallerUrl, resp.StatusCode)
+                    continue
+                  }
 
                   n, err := io.Copy(out, resp.Body)
                   logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("downloaded installer, %d bytes written", n)
                 }
 
                 // Rewrite the installers' InstallerUrl
-                logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("internalizing InstallerUrl")
-                v.SetInstallerUrl(fmt.Sprintf("%s/%s", globalInstallerUrl, strings.ToLower(v.GetInstallerSha())))
+                logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("internalizing %v", originalInstallerUrl)
+                v.SetInstallerUrl(fmt.Sprintf("%s/%s", internalizedInstallerUrl, strings.ToLower(v.GetInstallerSha())))
               }
 
               // Recreate manifest object, but with overwritten values (InstallerUrl(s))
@@ -231,9 +240,9 @@ func getManifests (path string) {
 
   for _, file := range files {
     if file.IsDir() {
-      logging.Logger.Trace().Msgf("searching directory %s", path + "/" + file.Name())
-
-      getManifests(path + "/" + file.Name())
+      subdirPath := filepath.Join(path, file.Name())
+      logging.Logger.Trace().Msgf("searching directory %s", subdirPath)
+      getManifests(subdirPath)
     }
   }
 }

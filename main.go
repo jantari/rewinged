@@ -43,6 +43,7 @@ func main() {
         tlsPrivateKeyPtr       = fs.String("httpsPrivateKeyFile", "./private.key", "The private key file to use if HTTPS is enabled")
         listenAddrPtr          = fs.String("listen", "localhost:8080", "The address and port for the REST API to listen on")
         autoInternalizePtr     = fs.Bool("autoInternalize", false, "Turn on the auto-internalization feature")
+        autoInternalizePathPtr = fs.String("autoInternalizePath", "./installers", "The directory where auto-internalized installers will be stored")
         autoInternalizeSkipPtr = fs.String("autoInternalizeSkip", "", "List of hostnames excluded from auto-internalization (comma or space to separate)")
         logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
         _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
@@ -73,21 +74,21 @@ func main() {
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
 
     logging.Logger.Debug().Msg("searching for manifests")
-    // Start up 10 worker goroutines that can parse in manifest-files from one directory each
-    var globalInstallerUrl string
+    var internalizedInstallerUrl string
     // TODO: check whether this allows for any kind of injection attack/crash with weird URLs?
     if *tlsEnablePtr {
-        globalInstallerUrl = fmt.Sprintf("https://%s/installers", *listenAddrPtr)
+        internalizedInstallerUrl = fmt.Sprintf("https://%s/installers", *listenAddrPtr)
     } else {
-        globalInstallerUrl = fmt.Sprintf("http://%s/installers", *listenAddrPtr)
+        internalizedInstallerUrl = fmt.Sprintf("http://%s/installers", *listenAddrPtr)
     }
 
     autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
         return unicode.IsSpace(c) || c == ','
     })
 
+    // Start up 6 worker goroutines that can parse in manifest-files from one directory each
     for w := 1; w <= 6; w++ {
-        go ingestManifestsWorker(*autoInternalizePtr, globalInstallerUrl, autoInternalizeSkipHosts)
+        go ingestManifestsWorker(*autoInternalizePtr, *autoInternalizePathPtr, internalizedInstallerUrl, autoInternalizeSkipHosts)
     }
 
     getManifests(*packagePathPtr)
@@ -149,7 +150,7 @@ func main() {
     router.SetTrustedProxies(nil)
     router.Use(logging.GinLogger())
     router.Use(gin.Recovery())
-    router.Static("/installers", "./installers")
+    router.Static("/installers", *autoInternalizePathPtr)
     router.GET("/information", controllers.GetInformation)
     router.GET("/packages", controllers.GetPackages)
     router.POST("/manifestSearch", controllers.SearchForPackage)
