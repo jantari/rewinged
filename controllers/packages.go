@@ -1,6 +1,8 @@
 package controllers
 
 import (
+    "fmt"
+    "strings"
     "github.com/gin-gonic/gin"
 
     "rewinged/logging"
@@ -16,7 +18,12 @@ func GetPackages(c *gin.Context) {
     c.JSON(200, response)
 }
 
-func GetPackage(c *gin.Context) {
+type GetPackageHandler struct {
+    TlsEnabled bool
+    InternalizationEnabled bool
+}
+
+func (this *GetPackageHandler) GetPackage(c *gin.Context) {
   logging.Logger.Debug().Msgf("/packageManifests: Someone tried to GET package '%v' with query params: %v", c.Param("package_identifier"), c.Request.URL.Query())
 
   response := models.API_ManifestSingleResponse_1_1_0 {
@@ -26,6 +33,54 @@ func GetPackage(c *gin.Context) {
   }
 
   var pkg []models.API_ManifestVersionInterface = models.Manifests.GetAllVersions(c.Param("package_identifier"))
+
+  if this.InternalizationEnabled {
+      var rewrittenOrigin string
+      // TODO: Only accept these headers if c.RemoteIP() is a trusted proxy configured by the user
+      xfProto := c.Request.Header["X-Forwarded-Proto"]
+      xfHost  := c.Request.Header["X-Forwarded-Host"]
+
+      if len(xfProto) == 1 && xfProto[0] != "" && len(xfHost) == 1 && xfHost[0] != "" {
+          rewrittenOrigin = fmt.Sprintf(
+              "%s://%s", xfProto[0], xfHost[0],
+          )
+      } else {
+          var proto string
+          if this.TlsEnabled {
+              proto = "https"
+          } else {
+              proto = "http"
+          }
+          rewrittenOrigin = fmt.Sprintf(
+              "%s://%s", proto, c.Request.Host,
+          )
+      }
+
+      // We cannot use a range loop over the installers here because range loops
+      // always put the current element in the loop into the same one memory address.
+      // So if we collect/append the pointers to the installers in the loop, they
+      // will all just point to the same memory location chosen by range.
+      for i := 0; i < len(pkg); i++ {
+          installers := pkg[i].GetInstallers()
+
+          for j := 0; j < len(installers); j++ {
+              // Only rewrite this installers InstallerUrl if it was marked for it on ingest
+              var originalInstallerURL string = installers[j].GetInstallerUrl()
+              if originalInstallerURL != "_REWINGED_MARKER_REWRITE_THIS" {
+                  continue
+              }
+
+              installers[j].SetInstallerUrl(
+                  fmt.Sprintf(
+                      "%s/installers/%s",
+                      rewrittenOrigin,
+                      strings.ToLower(installers[j].GetInstallerSha()),
+                  ),
+              )
+          }
+      }
+  }
+
   if len(pkg) > 0 {
     logging.Logger.Debug().Msgf("the package was found")
 

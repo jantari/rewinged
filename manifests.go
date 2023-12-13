@@ -1,7 +1,7 @@
 package main
 
 import (
-  "fmt"
+  //"fmt"
   "os"
   "errors"
   "slices"
@@ -190,7 +190,8 @@ func internalizeInstallers(
 
     // Rewrite the installers' InstallerUrl
     logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("internalizing %v", originalInstallerURL)
-    installer.SetInstallerUrl(fmt.Sprintf("%s/%s", internalizedInstallerURL, strings.ToLower(installer.GetInstallerSha())))
+    //installer.SetInstallerUrl(fmt.Sprintf("%s/%s", internalizedInstallerURL, strings.ToLower(installer.GetInstallerSha())))
+    installer.SetInstallerUrl("_REWINGED_MARKER_REWRITE_THIS")
   }
 }
 

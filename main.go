@@ -154,7 +154,12 @@ func main() {
     router.GET("/information", controllers.GetInformation)
     router.GET("/packages", controllers.GetPackages)
     router.POST("/manifestSearch", controllers.SearchForPackage)
-    router.GET("/packageManifests/:package_identifier", controllers.GetPackage)
+
+    var getPackagesConfig = &controllers.GetPackageHandler{
+        TlsEnabled: *tlsEnablePtr,
+        InternalizationEnabled: *autoInternalizePtr,
+    }
+    router.GET("/packageManifests/:package_identifier", getPackagesConfig.GetPackage)
 
     if *tlsEnablePtr {
         logging.Logger.Info().Msgf("starting server on https://%v", *listenAddrPtr)
