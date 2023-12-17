@@ -17,7 +17,7 @@ import (
   "rewinged/models"
 )
 
-func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, internalizedInstallerURL string, autoInternalizeSkipHosts []string) error {
+func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, autoInternalizeSkipHosts []string) error {
   for path := range jobs {
     files, err := os.ReadDir(path)
     if err != nil {
@@ -53,7 +53,7 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, int
               if (autoInternalize) {
                 var installers []models.API_InstallerInterface = version.GetInstallers()
 
-                internalizeInstallers(basemanifest.PackageIdentifier, basemanifest.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts, internalizedInstallerURL)
+                internalizeInstallers(basemanifest.PackageIdentifier, basemanifest.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts)
 
                 // Recreate manifest object, but with overwritten values (InstallerUrl(s))
                 manifest, err = newAPIManifest(
@@ -98,7 +98,7 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, int
             if (autoInternalize) {
               var installers []models.API_InstallerInterface = version.GetInstallers()
 
-              internalizeInstallers(key.PackageIdentifier, key.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts, internalizedInstallerURL)
+              internalizeInstallers(key.PackageIdentifier, key.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts)
 
               // Recreate manifest object, but with overwritten values (InstallerUrl(s))
               overwrittenMergedManifest, err := newAPIManifest(
@@ -137,7 +137,6 @@ func internalizeInstallers(
   installers []models.API_InstallerInterface,
   autoInternalizePath string,
   autoInternalizeSkipHosts []string,
-  internalizedInstallerURL string,
 ) {
   for _, installer := range installers {
     var originalInstallerURL string = installer.GetInstallerUrl()

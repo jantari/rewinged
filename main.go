@@ -72,15 +72,7 @@ func main() {
     }
 
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
-
     logging.Logger.Debug().Msg("searching for manifests")
-    var internalizedInstallerURL string
-    // TODO: check whether this allows for any kind of injection attack/crash with weird URLs?
-    if *tlsEnablePtr {
-        internalizedInstallerURL = fmt.Sprintf("https://%s/installers", *listenAddrPtr)
-    } else {
-        internalizedInstallerURL = fmt.Sprintf("http://%s/installers", *listenAddrPtr)
-    }
 
     autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
         return unicode.IsSpace(c) || c == ','
@@ -88,7 +80,7 @@ func main() {
 
     // Start up 6 worker goroutines that can parse in manifest-files from one directory each
     for w := 1; w <= 6; w++ {
-        go ingestManifestsWorker(*autoInternalizePtr, *autoInternalizePathPtr, internalizedInstallerURL, autoInternalizeSkipHosts)
+        go ingestManifestsWorker(*autoInternalizePtr, *autoInternalizePathPtr, autoInternalizeSkipHosts)
     }
 
     getManifests(*packagePathPtr)
