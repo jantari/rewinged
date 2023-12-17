@@ -115,8 +115,8 @@ rewinged will not look for any configuration file by default. Config file must b
 
 ### 🪄 Using rewinged
 
-You can run rewinged and test the API by opening `http://localhost:8080/information`
-or `http://localhost:8080/packages` in a browser or with `curl` / `Invoke-RestMethod`.
+You can run rewinged and test the API by opening `http://localhost:8080/api/information`
+or `http://localhost:8080/api/packages` in a browser or with `curl` / `Invoke-RestMethod`.
 
 But to use it with winget you will have to set up HTTPS because winget **requires**
 REST-sources to use HTTPS - plaintext HTTP is not allowed. If you do not have an internal
@@ -170,7 +170,7 @@ Then, run rewinged with HTTPS enabled:
 add it as a package source in winget:
 
 ```
-winget source add -n rewinged-local -a https://localhost:8443 -t "Microsoft.Rest"
+winget source add -n rewinged-local -a https://localhost:8443/api -t "Microsoft.Rest"
 ```
 
 and query it!
