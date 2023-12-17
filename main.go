@@ -146,20 +146,24 @@ func main() {
     if releaseMode == "true" {
         gin.SetMode(gin.ReleaseMode)
     }
-    router := gin.New()
-    router.SetTrustedProxies(nil)
-    router.Use(logging.GinLogger())
-    router.Use(gin.Recovery())
-    router.Static("/installers", *autoInternalizePathPtr)
-    router.GET("/information", controllers.GetInformation)
-    router.GET("/packages", controllers.GetPackages)
-    router.POST("/manifestSearch", controllers.SearchForPackage)
 
     var getPackagesConfig = &controllers.GetPackageHandler{
         TlsEnabled: *tlsEnablePtr,
         InternalizationEnabled: *autoInternalizePtr,
     }
-    router.GET("/packageManifests/:package_identifier", getPackagesConfig.GetPackage)
+
+    router := gin.New()
+    router.SetTrustedProxies(nil)
+    router.Use(logging.GinLogger())
+    router.Use(gin.Recovery())
+    router.Static("/installers", *autoInternalizePathPtr)
+    api := router.Group("/api")
+    {
+        api.GET("/information", controllers.GetInformation)
+        api.GET("/packages", controllers.GetPackages)
+        api.POST("/manifestSearch", controllers.SearchForPackage)
+        api.GET("/packageManifests/:package_identifier", getPackagesConfig.GetPackage)
+    }
 
     if *tlsEnablePtr {
         logging.Logger.Info().Msgf("starting server on https://%v", *listenAddrPtr)

@@ -65,18 +65,15 @@ func (this *GetPackageHandler) GetPackage(c *gin.Context) {
 
           for j := 0; j < len(installers); j++ {
               // Only rewrite this installers InstallerUrl if it was marked for it on ingest
-              var originalInstallerURL string = installers[j].GetInstallerUrl()
-              if originalInstallerURL != "_REWINGED_MARKER_REWRITE_THIS" {
-                  continue
+              if models.InternalizedInstallers[installers[j].GetInstallerSha()] {
+                  installers[j].SetInstallerUrl(
+                      fmt.Sprintf(
+                          "%s/installers/%s",
+                          rewrittenOrigin,
+                          strings.ToLower(installers[j].GetInstallerSha()),
+                      ),
+                  )
               }
-
-              installers[j].SetInstallerUrl(
-                  fmt.Sprintf(
-                      "%s/installers/%s",
-                      rewrittenOrigin,
-                      strings.ToLower(installers[j].GetInstallerSha()),
-                  ),
-              )
           }
       }
   }

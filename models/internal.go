@@ -334,6 +334,10 @@ func isDefault(v reflect.Value) bool {
   return v.IsZero()
 }
 
+// This map is used to remember which InstallerSHAs were successfully
+// internalized on manifest ingestion and can have their InstallerUrls rewritten.
+var InternalizedInstallers = make(map[string]bool)
+
 // Global variable that will hold all in-memory manifest data
 var Manifests = ManifestsStore{
     internal: make(map[string]map[string]API_ManifestVersionInterface),
