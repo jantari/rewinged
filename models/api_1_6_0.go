@@ -1,41 +1,41 @@
 package models
 
-// All of these definitions are based on the v1.1.0 API specification:
-// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml
+// All of these definitions are based on the v1.6.0 API specification:
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.6.0.yaml
 
-type API_Information_1_5_0 struct {
+type API_Information_1_6_0 struct {
     Data struct {
         SourceIdentifier        string
         ServerSupportedVersions []string
     }
 }
 
-// API_ManifestVersion_1_5_0 implements all of the API_ManifestVersionInterface interface methods
-type API_ManifestVersion_1_5_0 struct {
+// API_ManifestVersion_1_6_0 implements all of the API_ManifestVersionInterface interface methods
+type API_ManifestVersion_1_6_0 struct {
     PackageVersion string
-    DefaultLocale API_DefaultLocale_1_5_0
+    DefaultLocale API_DefaultLocale_1_6_0
     Channel string
-    Locales []API_Locale_1_5_0
-    Installers []API_Installer_1_5_0
+    Locales []API_Locale_1_6_0
+    Installers []API_Installer_1_6_0
 }
 
-func (ver API_ManifestVersion_1_5_0) GetDefaultLocalePackageName() string {
+func (ver API_ManifestVersion_1_6_0) GetDefaultLocalePackageName() string {
     return ver.DefaultLocale.PackageName
 }
 
-func (ver API_ManifestVersion_1_5_0) GetDefaultLocalePublisher() string {
+func (ver API_ManifestVersion_1_6_0) GetDefaultLocalePublisher() string {
     return ver.DefaultLocale.Publisher
 }
 
-func (ver API_ManifestVersion_1_5_0) GetDefaultLocaleShortDescription() string {
+func (ver API_ManifestVersion_1_6_0) GetDefaultLocaleShortDescription() string {
     return ver.DefaultLocale.ShortDescription
 }
 
-func (ver API_ManifestVersion_1_5_0) GetPackageVersion() string {
+func (ver API_ManifestVersion_1_6_0) GetPackageVersion() string {
     return ver.PackageVersion
 }
 
-func (ver API_ManifestVersion_1_5_0) GetInstallerProductCodes() []string {
+func (ver API_ManifestVersion_1_6_0) GetInstallerProductCodes() []string {
     var productCodes []string
 
     for _, installer := range ver.Installers {
@@ -45,11 +45,11 @@ func (ver API_ManifestVersion_1_5_0) GetInstallerProductCodes() []string {
     return productCodes
 }
 
-func (ver API_ManifestVersion_1_5_0) GetDefaultLocale() API_DefaultLocaleInterface {
+func (ver API_ManifestVersion_1_6_0) GetDefaultLocale() API_DefaultLocaleInterface {
     return ver.DefaultLocale
 }
 
-func (ver API_ManifestVersion_1_5_0) GetLocales() []API_LocaleInterface {
+func (ver API_ManifestVersion_1_6_0) GetLocales() []API_LocaleInterface {
     var locales []API_LocaleInterface
 
     for _, locale := range ver.Locales {
@@ -59,7 +59,7 @@ func (ver API_ManifestVersion_1_5_0) GetLocales() []API_LocaleInterface {
     return locales
 }
 
-func (ver API_ManifestVersion_1_5_0) GetInstallers() []API_InstallerInterface {
+func (ver API_ManifestVersion_1_6_0) GetInstallers() []API_InstallerInterface {
     var installerInterfaces []API_InstallerInterface
 
     // We cannot use a range ver.Installers {} loop here because range loops
@@ -73,21 +73,21 @@ func (ver API_ManifestVersion_1_5_0) GetInstallers() []API_InstallerInterface {
     return installerInterfaces
 }
 
-type API_Manifest_1_5_0 struct {
+type API_Manifest_1_6_0 struct {
     PackageIdentifier string
     Versions []API_ManifestVersionInterface
 }
 
-// API_Manifest_1_5_0 implements all of the API_ManifestInterface interface methods
-func (in API_Manifest_1_5_0) GetPackageIdentifier() string {
+// API_Manifest_1_6_0 implements all of the API_ManifestInterface interface methods
+func (in API_Manifest_1_6_0) GetPackageIdentifier() string {
     return in.PackageIdentifier
 }
 
-func (in API_Manifest_1_5_0) GetVersions() []API_ManifestVersionInterface {
+func (in API_Manifest_1_6_0) GetVersions() []API_ManifestVersionInterface {
     return in.Versions
 }
 
-type API_Installer_1_5_0 struct {
+type API_Installer_1_6_0 struct {
     InstallerIdentifier string `yaml:"InstallerIdentifier"`
     InstallerLocale string `yaml:"InstallerLocale" json:",omitempty"`
     Architecture string `yaml:"Architecture"`
@@ -99,14 +99,14 @@ type API_Installer_1_5_0 struct {
     InstallerSha256 string `yaml:"InstallerSha256"`
     SignatureSha256 string `yaml:"SignatureSha256" json:",omitempty"` // winget runs into an exception internally when this is an empty string (ParseFromHexString: Invalid value size), so omit in API responses if empty
     InstallModes []string `yaml:"InstallModes"`
-    InstallerSwitches API_InstallerSwitches_1_5_0 `yaml:"InstallerSwitches"`
+    InstallerSwitches API_InstallerSwitches_1_6_0 `yaml:"InstallerSwitches"`
     InstallerSuccessCodes []int64 `yaml:"InstallerSuccessCodes" json:",omitempty"`
-    ExpectedReturnCodes []API_ExpectedReturnCode_1_5_0 `yaml:"ExpectedReturnCodes"`
+    ExpectedReturnCodes []API_ExpectedReturnCode_1_6_0 `yaml:"ExpectedReturnCodes"`
     UpgradeBehavior string `yaml:"UpgradeBehavior" json:",omitempty"`
     Commands []string `yaml:"Commands" json:",omitempty"`
     Protocols []string `yaml:"Protocols" json:",omitempty"`
     FileExtensions []string `yaml:"FileExtensions" json:",omitempty"`
-    Dependencies API_Dependencies_1_5_0 `yaml:"Dependencies"`
+    Dependencies API_Dependencies_1_6_0 `yaml:"Dependencies"`
     PackageFamilyName string `yaml:"PackageFamilyName" json:",omitempty"`
     ProductCode string `yaml:"ProductCode"`
     Capabilities []string `yaml:"Capabilities" json:",omitempty"`
@@ -131,31 +131,32 @@ type API_Installer_1_5_0 struct {
     } `yaml:"AppsAndFeaturesEntries" json:",omitempty"`
     ElevationRequirement string `yaml:"ElevationRequirement" json:",omitempty"`
     NestedInstallerType string `yaml:"NestedInstallerType" json:",omitempty"`
-    NestedInstallerFiles []API_NestedInstallerFile_1_5_0 `yaml:"NestedInstallerFiles" json:",omitempty"`
+    NestedInstallerFiles []API_NestedInstallerFile_1_6_0 `yaml:"NestedInstallerFiles" json:",omitempty"`
     DisplayInstallWarnings bool `yaml:"DisplayInstallWarnings" json:",omitempty"`
     UnsupportedArguments []string `yaml:"UnsupportedArguments" json:",omitempty"`
-    InstallationMetadata API_InstallationMetadata_1_5_0 `yaml:"InstallationMetadata"`
+    InstallationMetadata API_InstallationMetadata_1_6_0 `yaml:"InstallationMetadata"`
+    DownloadCommandProhibited bool `yaml:"DownloadCommandProhibited"`
 }
 
-func (in *API_Installer_1_5_0) dummyFunc() bool {
+func (in *API_Installer_1_6_0) dummyFunc() bool {
     return false
 }
 
-func (in *API_Installer_1_5_0) GetInstallerSha() string {
+func (in *API_Installer_1_6_0) GetInstallerSha() string {
     return in.InstallerSha256
 }
 
-func (in *API_Installer_1_5_0) GetInstallerUrl() string {
+func (in *API_Installer_1_6_0) GetInstallerUrl() string {
     return in.InstallerUrl
 }
 
-func (in *API_Installer_1_5_0) SetInstallerUrl(newUrl string) {
+func (in *API_Installer_1_6_0) SetInstallerUrl(newUrl string) {
     in.InstallerUrl = newUrl
 }
 
 // API Locale schema
-// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml
-type API_Locale_1_5_0 struct {
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.6.0.yaml
+type API_Locale_1_6_0 struct {
     PackageLocale string `yaml:"PackageLocale"`
     Publisher string `yaml:"Publisher"`
     PublisherUrl string `yaml:"PublisherUrl"`
@@ -171,23 +172,23 @@ type API_Locale_1_5_0 struct {
     ShortDescription string `yaml:"ShortDescription"`
     Description string `yaml:"Description"`
     Tags []string `yaml:"Tags"`
-    Agreements []API_Agreement_1_5_0 `yaml:"Agreements"`
+    Agreements []API_Agreement_1_6_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
     PurchaseUrl string `yaml:"PurchaseUrl"`
     InstallationNotes string `yaml:"InstallationNotes"`
-    Documentations []Documentation_1_5_0 `yaml:"Documentations"`
-    Icons []API_Icon_1_5_0 `yaml:"Icons" json:",omitempty"`
+    Documentations []Documentation_1_6_0 `yaml:"Documentations"`
+    Icons []API_Icon_1_6_0 `yaml:"Icons" json:",omitempty"`
 }
 
-func (in API_Locale_1_5_0) dummyFunc() bool {
+func (in API_Locale_1_6_0) dummyFunc() bool {
     return false
 }
 
 // API DefaultLocale schema
 // https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.1.0.yaml#L1421
 // It is the same as Locale except with an added Moniker
-type API_DefaultLocale_1_5_0 struct {
+type API_DefaultLocale_1_6_0 struct {
     PackageLocale string `yaml:"PackageLocale"`
     Publisher string `yaml:"Publisher"`
     PublisherUrl string `yaml:"PublisherUrl"`
@@ -204,20 +205,20 @@ type API_DefaultLocale_1_5_0 struct {
     Description string `yaml:"Description"`
     Moniker string `yaml:"Moniker"`
     Tags []string `yaml:"Tags"`
-    Agreements []API_Agreement_1_5_0 `yaml:"Agreements"`
+    Agreements []API_Agreement_1_6_0 `yaml:"Agreements"`
     ReleaseNotes string `yaml:"ReleaseNotes"`
     ReleaseNotesUrl string `yaml:"ReleaseNotesUrl"`
     PurchaseUrl string `yaml:"PurchaseUrl"`
     InstallationNotes string `yaml:"InstallationNotes"`
-    Documentations []Documentation_1_5_0 `yaml:"Documentations"`
-    Icons []API_Icon_1_5_0 `yaml:"Icons" json:",omitempty"`
+    Documentations []Documentation_1_6_0 `yaml:"Documentations"`
+    Icons []API_Icon_1_6_0 `yaml:"Icons" json:",omitempty"`
 }
 
-func (in API_DefaultLocale_1_5_0) dummyFunc() bool {
+func (in API_DefaultLocale_1_6_0) dummyFunc() bool {
     return false
 }
 
-type API_ManifestSearchVersion_1_5_0 struct {
+type API_ManifestSearchVersion_1_6_0 struct {
     PackageVersion string
     Channel string //maxlength: 16, unused
     PackageFamilyNames []string
@@ -226,9 +227,9 @@ type API_ManifestSearchVersion_1_5_0 struct {
     UpgradeCodes []string
 }
 
-// https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.4.0/manifest.installer.1.4.0.json#L294
-// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml#L1015
-type API_Dependencies_1_5_0 struct {
+// https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.6.0/manifest.installer.1.6.0.json#L295
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.6.0.yaml#L1083
+type API_Dependencies_1_6_0 struct {
     WindowsFeatures []string `yaml:"WindowsFeatures" json:",omitempty"`
     WindowsLibraries []string `yaml:"WindowsLibraries" json:",omitempty"`
     PackageDependencies []struct {
@@ -238,8 +239,8 @@ type API_Dependencies_1_5_0 struct {
     ExternalDependencies []string `yaml:"ExternalDependencies" json:",omitempty"`
 }
 
-// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.4.0.yaml#L856
-type API_InstallerSwitches_1_5_0 struct {
+// https://github.com/microsoft/winget-cli-restsource/blob/main/documentation/WinGet-1.6.0.yaml#L923
+type API_InstallerSwitches_1_6_0 struct {
     Silent string `yaml:"Silent" json:",omitempty"`
     SilentWithProgress string `yaml:"SilentWithProgress" json:",omitempty"`
     Interactive string `yaml:"Interactive" json:",omitempty"`
@@ -249,50 +250,50 @@ type API_InstallerSwitches_1_5_0 struct {
     Custom string `yaml:"Custom" json:",omitempty"`
 }
 
-type API_ExpectedReturnCode_1_5_0 struct {
+type API_ExpectedReturnCode_1_6_0 struct {
     InstallerReturnCode int64 `yaml:"InstallerReturnCode"`
     ReturnResponse string `yaml:"ReturnResponse"`
     ReturnResponseUrl string `yaml:"ReturnResponseUrl"`
 }
 
-type API_Agreement_1_5_0 struct {
+type API_Agreement_1_6_0 struct {
     AgreementLabel string `yaml:"AgreementLabel" json:",omitempty"`
     Agreement string `yaml:"Agreement"`
     AgreementUrl string `yaml:"AgreementUrl"`
 }
 
-type API_ManifestSingleResponse_1_5_0 struct {
-    Data *API_Manifest_1_5_0
+type API_ManifestSingleResponse_1_6_0 struct {
+    Data *API_Manifest_1_6_0
     RequiredQueryParameters []string
     UnsupportedQueryParameters []string
 }
 
-type API_ManifestSearchRequest_1_5_0 struct {
+type API_ManifestSearchRequest_1_6_0 struct {
     MaximumResults int
     FetchAllManifests bool
-    Query API_SearchRequestMatch_1_5_0
-    Inclusions []API_SearchRequestPackageMatchFilter_1_5_0
-    Filters []API_SearchRequestPackageMatchFilter_1_5_0
+    Query API_SearchRequestMatch_1_6_0
+    Inclusions []API_SearchRequestPackageMatchFilter_1_6_0
+    Filters []API_SearchRequestPackageMatchFilter_1_6_0
 }
 
-type API_SearchRequestPackageMatchFilter_1_5_0 struct {
+type API_SearchRequestPackageMatchFilter_1_6_0 struct {
     PackageMatchField string
-    RequestMatch API_SearchRequestMatch_1_5_0
+    RequestMatch API_SearchRequestMatch_1_6_0
 }
 
-type API_SearchRequestMatch_1_5_0 struct {
+type API_SearchRequestMatch_1_6_0 struct {
     KeyWord string
     MatchType string
 }
 
 // Only exists in 1.4.0+, not in 1.1.0
-type Documentation_1_5_0 struct {
+type Documentation_1_6_0 struct {
     DocumentLabel string `yaml:"DocumentLabel"`
     DocumentUrl string `yaml:"DocumentUrl"`
 }
 
 // Only exists in 1.5.0+
-type API_Icon_1_5_0 struct {
+type API_Icon_1_6_0 struct {
     IconUrl string
     IconFileType string
     IconResolution string `json:",omitempty"`
@@ -300,7 +301,7 @@ type API_Icon_1_5_0 struct {
     IconSha256 string `json:",omitempty"`
 }
 
-type API_InstallationMetadata_1_5_0 struct {
+type API_InstallationMetadata_1_6_0 struct {
     DefaultInstallLocation string `yaml:"DefaultInstallLocation" json:",omitempty"`
     Files []struct {
         RelativeFilePath string `yaml:"RelativeFilePath"`
@@ -311,7 +312,7 @@ type API_InstallationMetadata_1_5_0 struct {
     } `yaml:"Files" json:",omitempty"`
 }
 
-type API_NestedInstallerFile_1_5_0 struct {
+type API_NestedInstallerFile_1_6_0 struct {
     RelativeFilePath string `yaml:"RelativeFilePath"`
     PortableCommandAlias string `yaml:"PortableCommandAlias" json:",omitempty"`
 }
