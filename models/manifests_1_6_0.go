@@ -29,6 +29,27 @@ type Manifest_SingletonManifest_1_6_0 struct {
     ManifestVersion string `yaml:"ManifestVersion"`
 }
 
+func (in *Manifest_SingletonManifest_1_6_0) ToApiManifest() API_ManifestInterface {
+  return &API_Manifest_1_6_0{
+    PackageIdentifier: in.PackageIdentifier,
+    Versions: []API_ManifestVersionInterface{
+      &API_ManifestVersion_1_6_0{
+        PackageVersion: in.PackageVersion,
+        DefaultLocale: API_DefaultLocale_1_6_0{
+          PackageLocale: in.PackageLocale,
+          PackageName: in.PackageName,
+          Publisher: in.Publisher,
+          ShortDescription: in.ShortDescription,
+          License: in.License,
+        },
+        Channel: "",
+        Locales: []API_Locale_1_6_0{},
+        Installers: []API_Installer_1_6_0{in.Installers[0].ToApiInstaller()},
+      },
+    },
+  }
+}
+
 // The struct for a separate version manifest file
 // https://github.com/microsoft/winget-cli/blob/master/schemas/JSON/manifests/v1.6.0/manifest.version.1.6.0.json
 type Manifest_VersionManifest_1_6_0 struct {

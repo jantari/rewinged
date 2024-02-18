@@ -38,6 +38,10 @@ func (basemanifest BaseManifest) ToMultiFileManifest() MultiFileManifest {
     }
 }
 
+type Manifest_SingletonManifestInterface interface {
+  ToApiManifest() API_ManifestInterface
+}
+
 type Manifest_VersionManifestInterface interface {
     GetPackageVersion() string
 }

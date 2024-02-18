@@ -43,7 +43,7 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, aut
           if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
             basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
             if basemanifest.ManifestType == "singleton" {
-              var manifest = parseFileAsSingletonManifest(filepath.Join(path, file.Name()))
+              var manifest = parseFileAsSingletonManifest(basemanifest.ManifestVersion, filepath.Join(path, file.Name()))
               logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
 
               // Singleton manifests can only contain version of a package each
@@ -537,43 +537,47 @@ func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
   return manifest, err
 }
 
-func parseFileAsSingletonManifest (path string) models.API_ManifestInterface {
+func parseFileAsSingletonManifest (manifestVersion string, path string) models.API_ManifestInterface {
   yamlFile, err := os.ReadFile(path)
   if err != nil {
     logging.Logger.Error().Err(err).Msg("error opening yaml file")
   }
 
-  singleton := &models.Manifest_SingletonManifest_1_1_0{}
-  err = yaml.Unmarshal(yamlFile, singleton)
+  var singleton models.Manifest_SingletonManifestInterface
+  singleton, err = unmarshalSingletonManifest(manifestVersion, yamlFile)
   if err != nil {
     logging.Logger.Error().Err(err).Msg("error unmarshalling singleton")
   }
 
-  manifest := singletonToStandardManifest(singleton)
+  manifest := singleton.ToApiManifest()
 
   return manifest
 }
 
-func singletonToStandardManifest (singleton *models.Manifest_SingletonManifest_1_1_0) *models.API_Manifest_1_1_0 {
-  manifest := &models.API_Manifest_1_1_0 {
-    PackageIdentifier: singleton.PackageIdentifier,
-    Versions: []models.API_ManifestVersionInterface{ models.API_ManifestVersion_1_1_0 {
-      PackageVersion: singleton.PackageVersion,
-      DefaultLocale: models.API_DefaultLocale_1_1_0 {
-        PackageLocale: singleton.PackageLocale,
-        PackageName: singleton.PackageName,
-        Publisher: singleton.Publisher,
-        ShortDescription: singleton.ShortDescription,
-        License: singleton.License,
-      },
-      Channel: "",
-      Locales: []models.API_Locale_1_1_0{},
-      Installers: []models.API_Installer_1_1_0{singleton.Installers[0].ToApiInstaller()},
-    },
-  },
-  }
+func unmarshalSingletonManifest (manifestVersion string, yamlData []byte) (models.Manifest_SingletonManifestInterface, error) {
+    var smanifest models.Manifest_SingletonManifestInterface
 
-  return manifest
+    switch manifestVersion {
+        case "1.1.0":
+            smanifest = &models.Manifest_SingletonManifest_1_1_0{}
+        case "1.2.0":
+            smanifest = &models.Manifest_SingletonManifest_1_2_0{}
+        case "1.4.0":
+            smanifest = &models.Manifest_SingletonManifest_1_4_0{}
+        case "1.5.0":
+            smanifest = &models.Manifest_SingletonManifest_1_5_0{}
+        case "1.6.0":
+            smanifest = &models.Manifest_SingletonManifest_1_6_0{}
+        default:
+            return nil, errors.New("unsupported SingletonManifest version " + manifestVersion)
+    }
+
+    err := yaml.Unmarshal(yamlData, smanifest)
+    if err != nil {
+        return nil, err
+    }
+
+    return smanifest, nil
 }
 
 func caseInsensitiveHasSuffix(s, substr string) bool {
