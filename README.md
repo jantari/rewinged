@@ -87,6 +87,7 @@ REWINGED_HTTPS (bool)
 REWINGED_HTTPSCERTIFICATEFILE (string)
 REWINGED_HTTPSPRIVATEKEYFILE (string)
 REWINGED_LISTEN (string)
+REWINGED_LOGLEVEL (string)
 REWINGED_MANIFESTPATH (string)
 ```
 
@@ -107,6 +108,7 @@ rewinged will not look for any configuration file by default. Config file must b
   "httpsCertificateFile": "./cert.pem",
   "httpsPrivateKeyFile": "./private.key",
   "listen": "localhost:8080",
+  "logLevel": "info",
   "manifestPath": "./packages"
 }
 ```
