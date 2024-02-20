@@ -58,17 +58,28 @@ func GinLogger() gin.HandlerFunc {
         param := gin.LogFormatterParams{}
 
         param.TimeStamp = time.Now() // Stop timer
-
         param.ClientIP = c.ClientIP()
         param.Method = c.Request.Method
         param.StatusCode = c.Writer.Status()
         param.ErrorMessage = c.Errors.ByType(gin.ErrorTypePrivate).String()
-        //param.Latency = duration
         param.BodySize = c.Writer.Size()
         if raw != "" {
             path = path + "?" + raw
         }
         param.Path = path
+
+        xff, ok := c.Request.Header["X-Forwarded-For"]
+        if ok {
+            var xffAllValues []string
+            for _, h := range(xff) {
+                for _, v := range(strings.Split(h, ",")) {
+                    xffAllValues = append(xffAllValues, strings.TrimSpace(v))
+                }
+            }
+            xff = xffAllValues
+        } else {
+            xff = []string{}
+        }
 
         // Log using the params
         var logEvent *zerolog.Event
@@ -78,12 +89,12 @@ func GinLogger() gin.HandlerFunc {
             logEvent = Logger.Info()
         }
 
-        logEvent.Str("client_id", param.ClientIP).
+        logEvent.Str("remote_addr", c.Request.RemoteAddr).
+            Strs("client_ips", xff).
             Str("method", param.Method).
             Int("status_code", param.StatusCode).
             Int("body_size", param.BodySize).
             Str("path", param.Path).
-            //Str("latency", param.Latency.String()).
             Msg(param.ErrorMessage)
     }
 }
