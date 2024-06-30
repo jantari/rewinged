@@ -12,7 +12,11 @@ var Dbsql *sql.DB
 
 func InitSql(data string) *sql.DB {
 	db, _ := sql.Open("sqlite", "file:"+data)
+	GetDownloadTable(db)
 	return db
+}
+func GetDownloadTable(db *sql.DB){
+	db.Exec("CREATE TABLE IF NOT EXISTS download (program text, version text, ip text, time text, primary key(program, version, time));")
 }
 func StartSQL(data string){
 	Dbsql=InitSql(data)
