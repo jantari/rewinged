@@ -46,6 +46,7 @@ func main() {
         autoInternalizePathPtr = fs.String("autoInternalizePath", "./installers", "The directory where auto-internalized installers will be stored")
         autoInternalizeSkipPtr = fs.String("autoInternalizeSkip", "", "List of hostnames excluded from auto-internalization (comma or space to separate)")
         logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
+        statisticsLogFilePtr      = fs.String("stats","", "make log file for packages")
         _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
     )
 
@@ -73,7 +74,9 @@ func main() {
 
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
     logging.Logger.Debug().Msg("searching for manifests")
-
+    if *statisticsLogFilePtr != "" {
+        logging.StartSQL(*statisticsLogFilePtr)
+    }
     autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
         return unicode.IsSpace(c) || c == ','
     })

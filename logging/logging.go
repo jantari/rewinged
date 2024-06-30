@@ -1,15 +1,15 @@
 package logging
 
 import (
-    "fmt"
+	"fmt"
 
-    "os"
-    "time"
-    "strings"
+	"os"
+	"strings"
+	"time"
 
-    // Structured logging
-    "github.com/rs/zerolog"
-    "github.com/gin-gonic/gin"
+	// Structured logging
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 )
 
 var Logger zerolog.Logger
@@ -65,6 +65,9 @@ func GinLogger() gin.HandlerFunc {
         param.ErrorMessage = c.Errors.ByType(gin.ErrorTypePrivate).String()
         //param.Latency = duration
         param.BodySize = c.Writer.Size()
+        if param.BodySize == 2 && Dbsql != nil{
+            InsertDownload(path, param.TimeStamp.String())
+        }
         if raw != "" {
             path = path + "?" + raw
         }

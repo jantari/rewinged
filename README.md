@@ -57,7 +57,7 @@ Commandline arguments have the highest priority and take precedence over both en
         Path to a json configuration file (optional)
   -https
         Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy
-  -httpsCertificateFile string
+  -self string
         The webserver certificate to use if HTTPS is enabled (default "./cert.pem")
   -httpsPrivateKeyFile string
         The private key file to use if HTTPS is enabled (default "./private.key")
