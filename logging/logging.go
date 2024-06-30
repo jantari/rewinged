@@ -66,7 +66,7 @@ func GinLogger() gin.HandlerFunc {
         //param.Latency = duration
         param.BodySize = c.Writer.Size()
         if param.BodySize == 2 && Dbsql != nil{
-            InsertDownload(path, param.TimeStamp.String())
+            InsertDownload(path, param.TimeStamp.Format("2006-01-02T15:04:05-07:00"))
         }
         if raw != "" {
             path = path + "?" + raw
