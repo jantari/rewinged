@@ -6,7 +6,7 @@ import (
     "os"
     "time"
     "strings"
-
+    "regexp"
     // Structured logging
     "github.com/rs/zerolog"
     "github.com/gin-gonic/gin"
@@ -43,6 +43,11 @@ func InitLogger(level string, releaseMode bool) {
         default:
             Logger.Fatal().Msgf("error parsing commandline arguments: invalid value \"%v\" for flag -logLevel: pass one of: disable, error, warn, info, debug, trace", level)
     }
+}
+
+func GetIPFromHeader(req *http.Request) string{
+    checkHeader := regexp.
+    return ""
 }
 
 // https://learninggolang.com/it5-gin-structured-logging.html
