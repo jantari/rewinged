@@ -46,15 +46,6 @@ func InitLogger(level string, releaseMode bool) {
     }
 }
 
-func GetIPFromHeader(req *gin.Context) string{
-    checkHeader := regexp.MustCompile(`(?i)x-real-ip`)
-    for key, value := range req.Request.Header {
-        if checkHeader.MatchString(key) {
-            return value[0]
-        }
-    }
-    return req.ClientIP()
-}
 
 // https://learninggolang.com/it5-gin-structured-logging.html
 func GinLogger() gin.HandlerFunc {
@@ -70,7 +61,7 @@ func GinLogger() gin.HandlerFunc {
 
         param.TimeStamp = time.Now() // Stop timer
 
-        param.ClientIP =GetIPFromHeader(c)
+        param.ClientIP =c.ClientIP()
         param.Method = c.Request.Method
         param.StatusCode = c.Writer.Status()
         param.ErrorMessage = c.Errors.ByType(gin.ErrorTypePrivate).String()

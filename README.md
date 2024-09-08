@@ -89,6 +89,7 @@ REWINGED_HTTPSPRIVATEKEYFILE (string)
 REWINGED_LISTEN (string)
 REWINGED_LOGLEVEL (string)
 REWINGED_MANIFESTPATH (string)
+REWINGED_PROXY (string)
 ```
 
 </details>
@@ -109,7 +110,8 @@ rewinged will not look for any configuration file by default. Config file must b
   "httpsPrivateKeyFile": "./private.key",
   "listen": "localhost:8080",
   "logLevel": "info",
-  "manifestPath": "./packages"
+  "manifestPath": "./packages",
+  "proxy":"127.0.0.1"
 }
 ```
 

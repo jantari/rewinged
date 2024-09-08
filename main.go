@@ -11,7 +11,7 @@ import (
     "strings"
     "unicode"
     "path/filepath"
-
+    "regexp"
     // Configuration
     "github.com/peterbourgon/ff/v3"
 
@@ -46,6 +46,7 @@ func main() {
         autoInternalizePathPtr = fs.String("autoInternalizePath", "./installers", "The directory where auto-internalized installers will be stored")
         autoInternalizeSkipPtr = fs.String("autoInternalizeSkip", "", "List of hostnames excluded from auto-internalization (comma or space to separate)")
         logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
+        trustedProxies         = fs.String("proxy","", "get list of trusted proxy addresses")
         _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
     )
 
@@ -145,7 +146,12 @@ func main() {
     }
 
     router := gin.New()
-    router.SetTrustedProxies(nil)
+    if(*trustedProxies != ""){
+        spliter := regexp.MustCompile(`[,\s;]`)
+        router.SetTrustedProxies(spliter.Split(*trustedProxies, -1))
+    } else{
+        router.SetTrustedProxies(nil)
+    }
     router.Use(logging.GinLogger())
     router.Use(gin.Recovery())
     router.Static("/installers", *autoInternalizePathPtr)
