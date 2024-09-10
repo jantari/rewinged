@@ -67,6 +67,8 @@ Commandline arguments have the highest priority and take precedence over both en
         Set log verbosity: disable, error, warn, info, debug or trace (default "info")
   -manifestPath string
         The directory to search for package manifest files (default "./packages")
+  -trustedProxies string
+        List of IPs from which to trust Client-IP headers (comma or space to separate)
   -version
         Print the version information and exit
 ```
@@ -89,6 +91,7 @@ REWINGED_HTTPSPRIVATEKEYFILE (string)
 REWINGED_LISTEN (string)
 REWINGED_LOGLEVEL (string)
 REWINGED_MANIFESTPATH (string)
+REWINGED_TRUSTEDPROXIES (string)
 ```
 
 </details>
@@ -109,7 +112,8 @@ rewinged will not look for any configuration file by default. Config file must b
   "httpsPrivateKeyFile": "./private.key",
   "listen": "localhost:8080",
   "logLevel": "info",
-  "manifestPath": "./packages"
+  "manifestPath": "./packages",
+  "trustedProxies": ""
 }
 ```
 

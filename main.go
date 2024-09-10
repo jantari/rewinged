@@ -11,7 +11,6 @@ import (
     "strings"
     "unicode"
     "path/filepath"
-
     // Configuration
     "github.com/peterbourgon/ff/v3"
 
@@ -46,6 +45,7 @@ func main() {
         autoInternalizePathPtr = fs.String("autoInternalizePath", "./installers", "The directory where auto-internalized installers will be stored")
         autoInternalizeSkipPtr = fs.String("autoInternalizeSkip", "", "List of hostnames excluded from auto-internalization (comma or space to separate)")
         logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
+        trustedProxiesPtr      = fs.String("trustedProxies", "", "List of IPs from which to trust Client-IP headers (comma or space to separate)")
         _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
     )
 
@@ -145,7 +145,17 @@ func main() {
     }
 
     router := gin.New()
-    router.SetTrustedProxies(nil)
+
+    // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
+    if (*trustedProxiesPtr != "") {
+        trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
+            return unicode.IsSpace(c) || c == ','
+        })
+        router.SetTrustedProxies(trustedProxies)
+    } else {
+        // From my testing, both nil and '0.0.0.0' result in gin trusting noone
+        router.SetTrustedProxies(nil)
+    }
     router.Use(logging.GinLogger())
     router.Use(gin.Recovery())
     router.Static("/installers", *autoInternalizePathPtr)
