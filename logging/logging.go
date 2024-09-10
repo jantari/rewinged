@@ -6,7 +6,6 @@ import (
     "os"
     "time"
     "strings"
-    "regexp"
 
     // Structured logging
     "github.com/rs/zerolog"
@@ -46,7 +45,6 @@ func InitLogger(level string, releaseMode bool) {
     }
 }
 
-
 // https://learninggolang.com/it5-gin-structured-logging.html
 func GinLogger() gin.HandlerFunc {
     return func(c *gin.Context) {
@@ -61,7 +59,7 @@ func GinLogger() gin.HandlerFunc {
 
         param.TimeStamp = time.Now() // Stop timer
 
-        param.ClientIP =c.ClientIP()
+        param.ClientIP = c.ClientIP()
         param.Method = c.Request.Method
         param.StatusCode = c.Writer.Status()
         param.ErrorMessage = c.Errors.ByType(gin.ErrorTypePrivate).String()
