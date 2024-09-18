@@ -135,8 +135,19 @@ can generate and trust a new self-signed certificate for testing purposes:
 ```powershell
 # Because we are adding a certificate to the local machine store, this has to be run in an elevated PowerShell session
 
+$IPs = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() |
+    Foreach-Object GetIPProperties |
+    Foreach-Object UnicastAddresses |
+    Foreach-Object Address |
+    Foreach-Object {
+        "&IPAddress=$( [System.Net.IPAddress]::new($_.GetAddressBytes() ))"
+    }
+
+[string]$SanIPs = -join $IPs
+
 $SelfSignedCertificateParameters = @{
-    'DnsName'         = 'localhost'
+    'Subject'         = 'localhost'
+    'TextExtension'   = @("2.5.29.17={text}DNS=localhost${SanIPs}")
     'NotAfter'        = (Get-Date).AddYears(1)
     'FriendlyName'    = 'rewinged HTTPS'
     'KeyAlgorithm'    = 'RSA'
