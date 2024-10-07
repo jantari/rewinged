@@ -43,37 +43,40 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, aut
           if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
             basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
             if basemanifest.ManifestType == "singleton" {
-              var manifest = parseFileAsSingletonManifest(basemanifest.ManifestVersion, filepath.Join(path, file.Name()))
               logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
+              manifest, err := parseFileAsSingletonManifest(basemanifest.ManifestVersion, filepath.Join(path, file.Name()))
+              if err != nil {
+                logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msg("could not parse singleton manifest")
+              } else {
+                // Singleton manifests can only contain version of a package each
+                var version = manifest.GetVersions()[0]
 
-              // Singleton manifests can only contain version of a package each
-              var version = manifest.GetVersions()[0]
+                // Internalization logic
+                if (autoInternalize) {
+                  var installers []models.API_InstallerInterface = version.GetInstallers()
 
-              // Internalization logic
-              if (autoInternalize) {
-                var installers []models.API_InstallerInterface = version.GetInstallers()
+                  internalizeInstallers(basemanifest.PackageIdentifier, basemanifest.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts)
 
-                internalizeInstallers(basemanifest.PackageIdentifier, basemanifest.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts)
+                  // Recreate manifest object, but with overwritten values (InstallerUrl(s))
+                  manifest, err = newAPIManifest(
+                    basemanifest.ManifestVersion,
+                    basemanifest.PackageIdentifier,
+                    basemanifest.PackageVersion,
+                    version.GetDefaultLocale(),
+                    version.GetLocales(),
+                    installers,
+                  )
 
-                // Recreate manifest object, but with overwritten values (InstallerUrl(s))
-                manifest, err = newAPIManifest(
-                  basemanifest.ManifestVersion,
-                  basemanifest.PackageIdentifier,
-                  basemanifest.PackageVersion,
-                  version.GetDefaultLocale(),
-                  version.GetLocales(),
-                  installers,
-                )
+                  if err != nil {
+                    logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("error reconstructing package after overwrite")
+                  }
 
-                if err != nil {
-                  logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("error reconstructing package after overwrite")
+                  version = manifest.GetVersions()[0]
                 }
+                // End internalization logic
 
-                version = manifest.GetVersions()[0]
+                models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
               }
-              // End internalization logic
-
-              models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
             } else {
               typeAndPath := models.ManifestTypeAndPath{
                 ManifestType: basemanifest.ManifestType,
@@ -537,21 +540,21 @@ func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
   return manifest, err
 }
 
-func parseFileAsSingletonManifest (manifestVersion string, path string) models.API_ManifestInterface {
+func parseFileAsSingletonManifest (manifestVersion string, path string) (models.API_ManifestInterface, error) {
+  var manifest models.API_ManifestInterface
+
   yamlFile, err := os.ReadFile(path)
   if err != nil {
-    logging.Logger.Error().Err(err).Msg("error opening yaml file")
+    return manifest, err
   }
 
   var singleton models.Manifest_SingletonManifestInterface
   singleton, err = unmarshalSingletonManifest(manifestVersion, yamlFile)
-  if err != nil {
-    logging.Logger.Error().Err(err).Msg("error unmarshalling singleton")
+  if err == nil {
+    manifest = singleton.ToApiManifest()
   }
 
-  manifest := singleton.ToApiManifest()
-
-  return manifest
+  return manifest, err
 }
 
 func unmarshalSingletonManifest (manifestVersion string, yamlData []byte) (models.Manifest_SingletonManifestInterface, error) {
