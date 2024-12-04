@@ -6,5 +6,6 @@ cert.pem
 server.key
 private.key
 resource.syso
+resource_windows*.syso
 winget-pkgs
 
