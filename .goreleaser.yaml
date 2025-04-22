@@ -1,3 +1,5 @@
+version: 2
+
 project_name: rewinged
 
 builds:
@@ -28,7 +30,7 @@ builds:
     goamd64: [v1]
 
 archives:
-  - format: zip
+  - formats: ['zip']
 
 changelog:
   filters:
