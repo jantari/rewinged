@@ -77,6 +77,8 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, aut
 
                 models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
               }
+            } else if basemanifest.ManifestType == "merged" {
+              logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("merged manifests are not yet supported")
             } else {
               typeAndPath := models.ManifestTypeAndPath{
                 ManifestType: basemanifest.ManifestType,
