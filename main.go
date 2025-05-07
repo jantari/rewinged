@@ -10,11 +10,11 @@ import (
     "time"
     "strings"
     "unicode"
+    "net/http"
     "path/filepath"
     // Configuration
     "github.com/peterbourgon/ff/v3"
 
-    "github.com/gin-gonic/gin"
     "github.com/rjeczalik/notify" // for live-reload of manifests
 
     "rewinged/logging"
@@ -136,7 +136,7 @@ func main() {
     }()
 
     if releaseMode == "true" {
-        gin.SetMode(gin.ReleaseMode)
+        //gin.SetMode(gin.ReleaseMode)
     }
 
     var getPackagesConfig = &controllers.GetPackageHandler{
@@ -144,38 +144,53 @@ func main() {
         InternalizationEnabled: *autoInternalizePtr,
     }
 
-    router := gin.New()
+    router := http.NewServeMux()
 
+    // TODO: Update for stdlib net/http
     // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
     if (*trustedProxiesPtr != "") {
         trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
             return unicode.IsSpace(c) || c == ','
         })
-        router.SetTrustedProxies(trustedProxies)
+        logging.Logger.Debug().Msgf("ignoring trusted proxies: %v", trustedProxies)
+        //router.SetTrustedProxies(trustedProxies)
     } else {
         // From my testing, both nil and '0.0.0.0' result in gin trusting noone
-        router.SetTrustedProxies(nil)
+        //router.SetTrustedProxies(nil)
     }
-    router.Use(logging.GinLogger())
-    router.Use(gin.Recovery())
-    router.Static("/installers", *autoInternalizePathPtr)
-    api := router.Group("/api")
-    {
-        api.GET("/information", controllers.GetInformation)
-        api.GET("/packages", controllers.GetPackages)
-        api.POST("/manifestSearch", controllers.SearchForPackage)
-        api.GET("/packageManifests/:package_identifier", getPackagesConfig.GetPackage)
-    }
+
+    // TODO: Request logging
+    // TODO: Recovery maybe?
+
+    fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))
+    router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
+
+    router.HandleFunc("GET /api/information", controllers.GetInformation)
+    router.HandleFunc("GET /api/packages", controllers.GetPackages)
+    router.HandleFunc("POST /api/manifestSearch", controllers.SearchForPackage)
+    router.HandleFunc("GET /api/packageManifests/{package_identifier}", getPackagesConfig.GetPackage)
 
     if *tlsEnablePtr {
         logging.Logger.Info().Msgf("starting server on https://%v", *listenAddrPtr)
-        if err := router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr); err != nil {
+        if err := http.ListenAndServeTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr, router); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     } else {
         logging.Logger.Info().Msgf("starting server on http://%v", *listenAddrPtr)
-        if err := router.Run(*listenAddrPtr); err != nil {
+        if err := http.ListenAndServe(*listenAddrPtr, router); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     }
 }
+
+func hideDirectoryListings(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if strings.HasSuffix(r.URL.Path, "/") {
+            http.NotFound(w, r)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}
+
