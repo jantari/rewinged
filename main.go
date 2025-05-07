@@ -170,14 +170,16 @@ func main() {
     router.HandleFunc("POST /api/manifestSearch", controllers.SearchForPackage)
     router.HandleFunc("GET /api/packageManifests/{package_identifier}", getPackagesConfig.GetPackage)
 
+    logging_router := logging.RequestLogger(router)
+
     if *tlsEnablePtr {
         logging.Logger.Info().Msgf("starting server on https://%v", *listenAddrPtr)
-        if err := http.ListenAndServeTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr, router); err != nil {
+        if err := http.ListenAndServeTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr, logging_router); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     } else {
         logging.Logger.Info().Msgf("starting server on http://%v", *listenAddrPtr)
-        if err := http.ListenAndServe(*listenAddrPtr, router); err != nil {
+        if err := http.ListenAndServe(*listenAddrPtr, logging_router); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     }

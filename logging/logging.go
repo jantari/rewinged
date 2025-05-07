@@ -6,9 +6,11 @@ import (
     "os"
     "time"
     "strings"
+    "net/http"
 
     // Structured logging
     "github.com/rs/zerolog"
+    "github.com/rs/zerolog/hlog"
 )
 
 var Logger zerolog.Logger
@@ -44,3 +46,23 @@ func InitLogger(level string, releaseMode bool) {
     }
 }
 
+func RequestLogger(next http.Handler) http.Handler {
+    h := hlog.NewHandler(Logger)
+
+    // TODO: Add client_id / client_ip, check trusted proxies!
+    accessHandler := hlog.AccessHandler(
+        func(r *http.Request, status, size int, duration time.Duration) {
+            hlog.FromRequest(r).Info().
+                Str("method", r.Method).
+                Stringer("url", r.URL).
+                Int("status_code", status).
+                Int("response_size_bytes", size).
+                Dur("elapsed_ms", duration).
+                Msg("incoming request")
+        },
+    )
+
+    userAgentHandler := hlog.UserAgentHandler("http_user_agent")
+
+    return h(accessHandler(userAgentHandler(next)))
+}
