@@ -11,6 +11,7 @@ import (
     "strings"
     "unicode"
     "net/http"
+    "net/netip"
     "path/filepath"
     // Configuration
     "github.com/peterbourgon/ff/v3"
@@ -69,6 +70,31 @@ func main() {
     if *versionFlagPtr {
         fmt.Printf("rewinged %v\n\ncommit:\t\t%v\ncompiled:\t%v\n", version, commit, compileTime)
         os.Exit(0)
+    }
+
+    // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
+    if (*trustedProxiesPtr != "") {
+        trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
+            return unicode.IsSpace(c) || c == ','
+        })
+
+        for _, proxy := range(trustedProxies) {
+            var prefix netip.Prefix
+            var err error
+            if !strings.Contains(proxy, "/") {
+                addr, err := netip.ParseAddr(proxy)
+                if err != nil {
+                    logging.Logger.Fatal().Err(err)
+                }
+                prefix, err = addr.Prefix(addr.BitLen())
+            } else {
+                prefix, err = netip.ParsePrefix(proxy)
+            }
+            if err != nil {
+                logging.Logger.Fatal().Err(err)
+            }
+            logging.TrustedProxies = append(logging.TrustedProxies, prefix)
+        }
     }
 
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
@@ -146,20 +172,6 @@ func main() {
 
     router := http.NewServeMux()
 
-    // TODO: Update for stdlib net/http
-    // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
-    if (*trustedProxiesPtr != "") {
-        trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
-            return unicode.IsSpace(c) || c == ','
-        })
-        logging.Logger.Debug().Msgf("ignoring trusted proxies: %v", trustedProxies)
-        //router.SetTrustedProxies(trustedProxies)
-    } else {
-        // From my testing, both nil and '0.0.0.0' result in gin trusting noone
-        //router.SetTrustedProxies(nil)
-    }
-
-    // TODO: Request logging
     // TODO: Recovery maybe?
 
     fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))

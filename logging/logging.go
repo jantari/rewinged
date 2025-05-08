@@ -7,6 +7,7 @@ import (
     "time"
     "strings"
     "net/http"
+    "net/netip"
 
     // Structured logging
     "github.com/rs/zerolog"
@@ -14,6 +15,7 @@ import (
 )
 
 var Logger zerolog.Logger
+var TrustedProxies []netip.Prefix = []netip.Prefix{}
 
 func InitLogger(level string, releaseMode bool) {
     zerolog.TimeFieldFormat = time.RFC3339
@@ -49,15 +51,30 @@ func InitLogger(level string, releaseMode bool) {
 func RequestLogger(next http.Handler) http.Handler {
     h := hlog.NewHandler(Logger)
 
-    // TODO: Add client_id / client_ip, check trusted proxies!
     accessHandler := hlog.AccessHandler(
         func(r *http.Request, status, size int, duration time.Duration) {
+            clientIp := r.RemoteAddr
+            clientAddrPort, err := netip.ParseAddrPort(r.RemoteAddr)
+            if err == nil {
+                clientIp = clientAddrPort.Addr().String()
+                for _, proxy := range(TrustedProxies) {
+                    if proxy.Contains(clientAddrPort.Addr()) {
+                        if xffClientIp := r.Header.Get("X-Forwarded-For"); xffClientIp != "" {
+                            clientIp = xffClientIp
+                        } else if xripClientIp := r.Header.Get("X-Real-Ip"); xripClientIp != "" {
+                            clientIp = xripClientIp
+                        }
+                        break
+                    }
+                }
+            }
             hlog.FromRequest(r).Info().
                 Str("method", r.Method).
                 Stringer("url", r.URL).
                 Int("status_code", status).
                 Int("response_size_bytes", size).
                 Dur("elapsed_ms", duration).
+                Str("client_ip", clientIp).
                 Msg("incoming request")
         },
     )
