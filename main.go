@@ -72,6 +72,8 @@ func main() {
         os.Exit(0)
     }
 
+    logging.InitLogger(*logLevelPtr, releaseMode == "true")
+
     // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
     if (*trustedProxiesPtr != "") {
         trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
@@ -82,22 +84,20 @@ func main() {
             var prefix netip.Prefix
             var err error
             if !strings.Contains(proxy, "/") {
-                addr, err := netip.ParseAddr(proxy)
-                if err != nil {
-                    logging.Logger.Fatal().Err(err)
-                }
-                prefix, err = addr.Prefix(addr.BitLen())
+                var addr netip.Addr
+                addr, err = netip.ParseAddr(proxy)
+                // addr.Prefix() cannot error if called with addr.Bitlen()
+                prefix, _ = addr.Prefix(addr.BitLen())
             } else {
                 prefix, err = netip.ParsePrefix(proxy)
             }
             if err != nil {
-                logging.Logger.Fatal().Err(err)
+                logging.Logger.Fatal().Err(err).Msg("invalid trustedProxies")
             }
             logging.TrustedProxies = append(logging.TrustedProxies, prefix)
         }
     }
 
-    logging.InitLogger(*logLevelPtr, releaseMode == "true")
     logging.Logger.Debug().Msg("searching for manifests")
 
     autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
