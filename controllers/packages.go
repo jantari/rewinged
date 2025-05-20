@@ -105,12 +105,6 @@ func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request
 }
 
 func SearchForPackage(w http.ResponseWriter, r *http.Request) {
-  logging.Logger.Debug().Msgf("Incoming /manifestSearch request with query params: %v", r.URL.Query())
-  logging.Logger.Debug().Msgf("and headers:")
-  for key, values := range r.Header {
-    logging.Logger.Debug().Msgf("  %s: %v", key, values)
-  }
-
   var post models.API_ManifestSearchRequest_1_1_0
 
   d := json.NewDecoder(r.Body)
