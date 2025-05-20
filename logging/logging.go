@@ -6,13 +6,16 @@ import (
     "os"
     "time"
     "strings"
+    "net/http"
+    "net/netip"
 
     // Structured logging
     "github.com/rs/zerolog"
-    "github.com/gin-gonic/gin"
+    "github.com/rs/zerolog/hlog"
 )
 
 var Logger zerolog.Logger
+var TrustedProxies []netip.Prefix = []netip.Prefix{}
 
 func InitLogger(level string, releaseMode bool) {
     zerolog.TimeFieldFormat = time.RFC3339
@@ -45,45 +48,36 @@ func InitLogger(level string, releaseMode bool) {
     }
 }
 
-// https://learninggolang.com/it5-gin-structured-logging.html
-func GinLogger() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        path := c.Request.URL.Path
-        raw := c.Request.URL.RawQuery
+func RequestLogger(next http.Handler) http.Handler {
+    h := hlog.NewHandler(Logger)
 
-        // Process request
-        c.Next()
+    accessHandler := hlog.AccessHandler(
+        func(r *http.Request, status, size int, duration time.Duration) {
+            clientIp := r.RemoteAddr
+            clientAddrPort, err := netip.ParseAddrPort(r.RemoteAddr)
+            if err == nil {
+                clientIp = clientAddrPort.Addr().String()
+                for _, proxy := range(TrustedProxies) {
+                    if proxy.Contains(clientAddrPort.Addr()) {
+                        if xffClientIp := r.Header.Get("X-Forwarded-For"); xffClientIp != "" {
+                            clientIp = xffClientIp
+                        } else if xripClientIp := r.Header.Get("X-Real-Ip"); xripClientIp != "" {
+                            clientIp = xripClientIp
+                        }
+                        break
+                    }
+                }
+            }
+            hlog.FromRequest(r).Info().
+                Str("method", r.Method).
+                Stringer("path", r.URL).
+                Int("status_code", status).
+                Int("response_size", size).
+                Dur("elapsed_ms", duration).
+                Str("client_ip", clientIp).
+                Msg("incoming request")
+        },
+    )
 
-        // Fill the params
-        param := gin.LogFormatterParams{}
-
-        param.TimeStamp = time.Now() // Stop timer
-
-        param.ClientIP = c.ClientIP()
-        param.Method = c.Request.Method
-        param.StatusCode = c.Writer.Status()
-        param.ErrorMessage = c.Errors.ByType(gin.ErrorTypePrivate).String()
-        //param.Latency = duration
-        param.BodySize = c.Writer.Size()
-        if raw != "" {
-            path = path + "?" + raw
-        }
-        param.Path = path
-
-        // Log using the params
-        var logEvent *zerolog.Event
-        if c.Writer.Status() >= 500 {
-            logEvent = Logger.Error()
-        } else {
-            logEvent = Logger.Info()
-        }
-
-        logEvent.Str("client_id", param.ClientIP).
-            Str("method", param.Method).
-            Int("status_code", param.StatusCode).
-            Int("body_size", param.BodySize).
-            Str("path", param.Path).
-            //Str("latency", param.Latency.String()).
-            Msg(param.ErrorMessage)
-    }
+    return h(accessHandler(next))
 }

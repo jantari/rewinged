@@ -10,11 +10,12 @@ import (
     "time"
     "strings"
     "unicode"
+    "net/http"
+    "net/netip"
     "path/filepath"
     // Configuration
     "github.com/peterbourgon/ff/v3"
 
-    "github.com/gin-gonic/gin"
     "github.com/rjeczalik/notify" // for live-reload of manifests
 
     "rewinged/logging"
@@ -72,6 +73,31 @@ func main() {
     }
 
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
+
+    // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
+    if (*trustedProxiesPtr != "") {
+        trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
+            return unicode.IsSpace(c) || c == ','
+        })
+
+        for _, proxy := range(trustedProxies) {
+            var prefix netip.Prefix
+            var err error
+            if !strings.Contains(proxy, "/") {
+                var addr netip.Addr
+                addr, err = netip.ParseAddr(proxy)
+                // addr.Prefix() cannot error if called with addr.Bitlen()
+                prefix, _ = addr.Prefix(addr.BitLen())
+            } else {
+                prefix, err = netip.ParsePrefix(proxy)
+            }
+            if err != nil {
+                logging.Logger.Fatal().Err(err).Msg("invalid trustedProxies")
+            }
+            logging.TrustedProxies = append(logging.TrustedProxies, prefix)
+        }
+    }
+
     logging.Logger.Debug().Msg("searching for manifests")
 
     autoInternalizeSkipHosts := strings.FieldsFunc(*autoInternalizeSkipPtr, func(c rune) bool {
@@ -135,47 +161,46 @@ func main() {
         }
     }()
 
-    if releaseMode == "true" {
-        gin.SetMode(gin.ReleaseMode)
-    }
-
     var getPackagesConfig = &controllers.GetPackageHandler{
         TlsEnabled: *tlsEnablePtr,
         InternalizationEnabled: *autoInternalizePtr,
     }
 
-    router := gin.New()
+    router := http.NewServeMux()
 
-    // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
-    if (*trustedProxiesPtr != "") {
-        trustedProxies := strings.FieldsFunc(*trustedProxiesPtr, func(c rune) bool {
-            return unicode.IsSpace(c) || c == ','
-        })
-        router.SetTrustedProxies(trustedProxies)
-    } else {
-        // From my testing, both nil and '0.0.0.0' result in gin trusting noone
-        router.SetTrustedProxies(nil)
-    }
-    router.Use(logging.GinLogger())
-    router.Use(gin.Recovery())
-    router.Static("/installers", *autoInternalizePathPtr)
-    api := router.Group("/api")
-    {
-        api.GET("/information", controllers.GetInformation)
-        api.GET("/packages", controllers.GetPackages)
-        api.POST("/manifestSearch", controllers.SearchForPackage)
-        api.GET("/packageManifests/:package_identifier", getPackagesConfig.GetPackage)
-    }
+    // TODO: Recovery maybe?
+
+    fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))
+    router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
+
+    router.HandleFunc("GET /api/information", controllers.GetInformation)
+    router.HandleFunc("GET /api/packages", controllers.GetPackages)
+    router.HandleFunc("POST /api/manifestSearch", controllers.SearchForPackage)
+    router.HandleFunc("GET /api/packageManifests/{package_identifier}", getPackagesConfig.GetPackage)
+
+    logging_router := logging.RequestLogger(router)
 
     if *tlsEnablePtr {
         logging.Logger.Info().Msgf("starting server on https://%v", *listenAddrPtr)
-        if err := router.RunTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr); err != nil {
+        if err := http.ListenAndServeTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr, logging_router); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     } else {
         logging.Logger.Info().Msgf("starting server on http://%v", *listenAddrPtr)
-        if err := router.Run(*listenAddrPtr); err != nil {
+        if err := http.ListenAndServe(*listenAddrPtr, logging_router); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     }
 }
+
+func hideDirectoryListings(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if strings.HasSuffix(r.URL.Path, "/") {
+            http.NotFound(w, r)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}
+
