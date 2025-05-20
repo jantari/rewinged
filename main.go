@@ -161,10 +161,6 @@ func main() {
         }
     }()
 
-    if releaseMode == "true" {
-        //gin.SetMode(gin.ReleaseMode)
-    }
-
     var getPackagesConfig = &controllers.GetPackageHandler{
         TlsEnabled: *tlsEnablePtr,
         InternalizationEnabled: *autoInternalizePtr,

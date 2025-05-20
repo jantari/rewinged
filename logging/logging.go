@@ -70,16 +70,14 @@ func RequestLogger(next http.Handler) http.Handler {
             }
             hlog.FromRequest(r).Info().
                 Str("method", r.Method).
-                Stringer("url", r.URL).
+                Stringer("path", r.URL).
                 Int("status_code", status).
-                Int("response_size_bytes", size).
+                Int("response_size", size).
                 Dur("elapsed_ms", duration).
                 Str("client_ip", clientIp).
                 Msg("incoming request")
         },
     )
 
-    userAgentHandler := hlog.UserAgentHandler("http_user_agent")
-
-    return h(accessHandler(userAgentHandler(next)))
+    return h(accessHandler(next))
 }
