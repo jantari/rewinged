@@ -7,7 +7,7 @@ type API_Information_1_7_0 struct {
     Data struct {
         SourceIdentifier        string
         ServerSupportedVersions []string
-        Authentication          API_Authentication_1_7_0
+        Authentication          *API_Authentication_1_7_0 `json:",omitempty"`
     }
 }
 

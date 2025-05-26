@@ -7,12 +7,7 @@ type API_Information_1_9_0 struct {
     Data struct {
         SourceIdentifier        string
         ServerSupportedVersions []string
-        // Schema 1.9 supports authentication, if the server were to use it
-        // it would have to be returned here. The server can also return
-        // the Authentication field with AuthenticationType == none, but
-        // to stay backwards compatible with older winget versions I don't.
-        // See: https://github.com/microsoft/winget-cli-restsource/blob/bbee303eab66427eb1c108366c51bb6596f3cd11/src/WinGet.RestSource.Utils/Models/Schemas/Information.cs#L48C22-L48C36
-        // Authentication          API_Authentication_1_9_0
+        Authentication          *API_Authentication_1_9_0 `json:",omitempty"`
     }
 }
 
