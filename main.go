@@ -193,12 +193,22 @@ func main() {
     // TODO: Recovery maybe?
 
     fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))
-    router.Handle("/installers/", http.StripPrefix("/installers", controllers.JWTAuthMiddleware(hideDirectoryListings(fileServer))))
-
     router.HandleFunc("GET /api/information", controllers.GetInformation)
-    router.Handle("GET /api/packages", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.GetPackages)))
-    router.Handle("POST /api/manifestSearch", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.SearchForPackage)))
-    router.Handle("GET /api/packageManifests/{package_identifier}", controllers.JWTAuthMiddleware(http.HandlerFunc(getPackagesConfig.GetPackage)))
+
+    switch settings.SourceAuthenticationType {
+    case "none":
+        router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
+        router.Handle("GET /api/packages", http.HandlerFunc(controllers.GetPackages))
+        router.Handle("POST /api/manifestSearch", http.HandlerFunc(controllers.SearchForPackage))
+        router.Handle("GET /api/packageManifests/{package_identifier}", http.HandlerFunc(getPackagesConfig.GetPackage))
+    case "microsoftEntraId":
+        router.Handle("/installers/", http.StripPrefix("/installers", controllers.JWTAuthMiddleware(hideDirectoryListings(fileServer))))
+        router.Handle("GET /api/packages", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.GetPackages)))
+        router.Handle("POST /api/manifestSearch", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.SearchForPackage)))
+        router.Handle("GET /api/packageManifests/{package_identifier}", controllers.JWTAuthMiddleware(http.HandlerFunc(getPackagesConfig.GetPackage)))
+    default:
+        logging.Logger.Fatal().Msg("sourceAuthType must be either none or microsoftEntraId")
+    }
 
     logging_router := logging.RequestLogger(router)
 

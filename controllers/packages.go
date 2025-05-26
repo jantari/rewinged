@@ -7,6 +7,7 @@ import (
     "encoding/json"
 
     "rewinged/logging"
+    "rewinged/settings"
     "rewinged/models"
 )
 
@@ -29,6 +30,7 @@ type GetPackageHandler struct {
 
 func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request) {
   logging.Logger.Debug().Msgf("/packageManifests: Someone tried to GET package '%v' with query params: %v", r.PathValue("package_identifier"), r.URL.Query())
+  logging.Logger.Debug().Msgf("client requested API version %v", r.Header.Get("Version"))
 
   response := models.API_ManifestSingleResponse_1_1_0 {
     RequiredQueryParameters: []string{},
@@ -77,6 +79,39 @@ func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request
                           strings.ToLower(installers[j].GetInstallerSha()),
                       ),
                   )
+
+                  // If source authentication is configured, any internalized installers
+                  // are also only downloadable with valid authentication. The winget client
+                  // does not pass authentication along with the Installer download request
+                  // unless the Installer metadata explicitly asks for it, which is only
+                  // supported starting with API schema 1.10.0. Telling winget that the source
+                  // requires authentication via the GET /information endpoint only makes winget
+                  // supply authentication for REST API calls, not installer downloads.
+                  // This means two things IF authentication is enabled in rewinged:
+                  //   1. Source (REST API) authentication was added in schema 1.7.0, but
+                  //      InstallerAuthentication is only allowed with schema 1.10.0+. This
+                  //      means, for AutoInternalized packages, for which rewinged hosts the
+                  //      installer no schemas older than 1.10.0 can be used.
+                  //   2. We have to explicitly edit the metadata of internalized installers
+                  //      to say they will require authentication to download to make winget CLI
+                  //      pass credentials with the download request
+                  if settings.SourceAuthenticationType == "microsoftEntraId" {
+                      v, ok := installers[j].(models.API_InstallerWithAuthInterface)
+                      if ok {
+                        v.SetInstallerAuthentication(&models.API_Authentication_1_7_0{
+                          AuthenticationType: settings.SourceAuthenticationType,
+                          MicrosoftEntraIdAuthenticationInfo: struct {
+                            Resource string `yaml:"Resource"`
+                            Scope string `yaml:"Scope" json:",omitempty"`
+                          }{
+                            Resource: settings.SourceAuthenticationEntraIDResource, // Entra Application ID
+                            Scope: "user_impersonation",
+                          },
+                        })
+                      } else {
+                        logging.Logger.Warn().Msgf("manifest version of this package %T is too old and does not support InstallerAuthentication, client download will likely fail", installers[j])
+                      }
+                  }
               }
           }
       }
