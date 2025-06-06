@@ -139,7 +139,7 @@ type API_Installer_1_10_0 struct {
     DownloadCommandProhibited bool `yaml:"DownloadCommandProhibited"`
     RepairBehavior string `yaml:"RepairBehavior" json:",omitempty"`
     ArchiveBinariesDependOnPath bool `yaml:"ArchiveBinariesDependOnPath"`
-    Authentication *API_Authentication_1_7_0 `json:",omitempty"`
+    Authentication *API_Authentication_1_10_0 `json:",omitempty"`
 }
 
 func (in *API_Installer_1_10_0) dummyFunc() bool {
@@ -158,7 +158,7 @@ func (in *API_Installer_1_10_0) SetInstallerUrl(newUrl string) {
     in.InstallerUrl = newUrl
 }
 
-func (in *API_Installer_1_10_0) SetInstallerAuthentication(auth *API_Authentication_1_7_0) {
+func (in *API_Installer_1_10_0) SetInstallerAuthentication(auth *API_Authentication_1_10_0) {
     in.Authentication = auth
 }
 

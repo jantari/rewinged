@@ -40,9 +40,13 @@ type API_InstallerInterface interface {
     dummyFunc() bool
 }
 
-type API_InstallerWithAuthInterface interface {
+type API_AuthenticationInterface interface {
+    API_Authentication_1_7_0 | API_Authentication_1_9_0 | API_Authentication_1_10_0
+}
+
+type API_InstallerWithAuthInterface[AI API_AuthenticationInterface] interface {
     API_InstallerInterface
-    SetInstallerAuthentication(auth *API_Authentication_1_7_0) // temporary, needs to be an interface
+    SetInstallerAuthentication(auth *AI)
 }
 
 type API_LocaleInterface interface {

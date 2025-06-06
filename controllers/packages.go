@@ -84,9 +84,7 @@ func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request
                   // are also only downloadable with valid authentication. The winget client
                   // does not pass authentication along with the Installer download request
                   // unless the Installer metadata explicitly asks for it, which is only
-                  // supported starting with API schema 1.10.0. Telling winget that the source
-                  // requires authentication via the GET /information endpoint only makes winget
-                  // supply authentication for REST API calls, not installer downloads.
+                  // supported starting with API schema 1.10.0.
                   // This means two things IF authentication is enabled in rewinged:
                   //   1. Source (REST API) authentication was added in schema 1.7.0, but
                   //      InstallerAuthentication is only allowed with schema 1.10.0+. This
@@ -96,9 +94,13 @@ func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request
                   //      to say they will require authentication to download to make winget CLI
                   //      pass credentials with the download request
                   if settings.SourceAuthenticationType == "microsoftEntraId" {
-                      v, ok := installers[j].(models.API_InstallerWithAuthInterface)
+                      // Currently hardcoded to insert a v1.10.0 Authentication struct, but it doesn't matter as the
+                      // struct itself hasn't changed since being introduced in API 1.7.0 and it's only allowed in
+                      // installers as of API 1.10.0. Technically, when adding support for the next API version after
+                      // 1.10.0 this should type-switch on installers[j] and add the version-matched struct.
+                      v, ok := installers[j].(models.API_InstallerWithAuthInterface[models.API_Authentication_1_10_0])
                       if ok {
-                        v.SetInstallerAuthentication(&models.API_Authentication_1_7_0{
+                        v.SetInstallerAuthentication(&models.API_Authentication_1_10_0{
                           AuthenticationType: settings.SourceAuthenticationType,
                           MicrosoftEntraIdAuthenticationInfo: struct {
                             Resource string `yaml:"Resource"`
