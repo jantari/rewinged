@@ -18,6 +18,7 @@ import (
 
     "github.com/rjeczalik/notify" // for live-reload of manifests
 
+    "rewinged/settings"
     "rewinged/logging"
     "rewinged/models"
     "rewinged/controllers"
@@ -45,6 +46,9 @@ func main() {
         autoInternalizePtr     = fs.Bool("autoInternalize", false, "Turn on the auto-internalization feature")
         autoInternalizePathPtr = fs.String("autoInternalizePath", "./installers", "The directory where auto-internalized installers will be stored")
         autoInternalizeSkipPtr = fs.String("autoInternalizeSkip", "", "List of hostnames excluded from auto-internalization (comma or space to separate)")
+        sourceAuthTypePtr             = fs.String("sourceAuthType", "none", "Require authentication to interact with the REST API: none, microsoftEntraId")
+        sourceAuthEntraIDResourcePtr  = fs.String("sourceAuthEntraIDResource", "", "ApplicationID of the EntraID App used for authenticating clients")
+        sourceAuthEntraIDAuthorityURL = fs.String("sourceAuthEntraIDAuthorityURL", "", "Authority/Issuer URL of the EntraID App used for authenticating clients")
         logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
         trustedProxiesPtr      = fs.String("trustedProxies", "", "List of IPs from which to trust Client-IP headers (comma or space to separate)")
         _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
@@ -73,6 +77,24 @@ func main() {
     }
 
     logging.InitLogger(*logLevelPtr, releaseMode == "true")
+
+    if *sourceAuthTypePtr != "microsoftEntraId" && *sourceAuthTypePtr != "none" {
+        logging.Logger.Fatal().Msg("sourceAuthType must be either none or microsoftEntraId")
+    }
+
+    // sourceAuthEntraIDResource is required if sourceAuthType is "microsoftEntraId"
+    if *sourceAuthTypePtr == "microsoftEntraId" && *sourceAuthEntraIDResourcePtr == "" {
+        logging.Logger.Fatal().Msg("sourceAuthEntraIDResource is required when sourceAuthType is set to microsoftEntraId")
+    }
+
+    // sourceAuthEntraIDAuthorityURL is required if sourceAuthType is "microsoftEntraId"
+    if *sourceAuthTypePtr == "microsoftEntraId" && *sourceAuthEntraIDAuthorityURL == "" {
+        logging.Logger.Fatal().Msg("sourceAuthEntraIDAuthorityURL is required when sourceAuthType is set to microsoftEntraId")
+    }
+
+    settings.SourceAuthenticationType = *sourceAuthTypePtr
+    settings.SourceAuthenticationEntraIDResource = *sourceAuthEntraIDResourcePtr
+    settings.SourceAuthenticationEntraIDAuthorityURL = *sourceAuthEntraIDAuthorityURL
 
     // Users can set 0.0.0.0/0 or ::/0 to trust all proxies if need be
     if (*trustedProxiesPtr != "") {
@@ -171,12 +193,22 @@ func main() {
     // TODO: Recovery maybe?
 
     fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))
-    router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
-
     router.HandleFunc("GET /api/information", controllers.GetInformation)
-    router.HandleFunc("GET /api/packages", controllers.GetPackages)
-    router.HandleFunc("POST /api/manifestSearch", controllers.SearchForPackage)
-    router.HandleFunc("GET /api/packageManifests/{package_identifier}", getPackagesConfig.GetPackage)
+
+    switch settings.SourceAuthenticationType {
+    case "none":
+        router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
+        router.Handle("GET /api/packages", http.HandlerFunc(controllers.GetPackages))
+        router.Handle("POST /api/manifestSearch", http.HandlerFunc(controllers.SearchForPackage))
+        router.Handle("GET /api/packageManifests/{package_identifier}", http.HandlerFunc(getPackagesConfig.GetPackage))
+    case "microsoftEntraId":
+        router.Handle("/installers/", http.StripPrefix("/installers", controllers.JWTAuthMiddleware(hideDirectoryListings(fileServer))))
+        router.Handle("GET /api/packages", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.GetPackages)))
+        router.Handle("POST /api/manifestSearch", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.SearchForPackage)))
+        router.Handle("GET /api/packageManifests/{package_identifier}", controllers.JWTAuthMiddleware(http.HandlerFunc(getPackagesConfig.GetPackage)))
+    default:
+        logging.Logger.Fatal().Msg("sourceAuthType must be either none or microsoftEntraId")
+    }
 
     logging_router := logging.RequestLogger(router)
 
