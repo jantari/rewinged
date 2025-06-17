@@ -11,14 +11,14 @@ It is currently in [pre-1.0](https://semver.org/#spec-item-4) development so con
 - Add your own manifests for internal or customized software
 - Search, list, show and install software - the core winget features
 - Automatically internalize package installers to serve them to machines without internet
-- Package manifest versions from 1.1.0 to 1.9.0 are all supported simultaneously
+- Restrict access to the package source with Entra ID authentication
+- Package manifest versions from 1.1.0 to 1.10.0 are all supported simultaneously
 - Runs on Windows, Linux and in Docker
 
 ## 🚧 Not Yet Working or Complete
 
 - Correlation of installed programs and programs in the repository is not perfect (in part due to [this](https://github.com/microsoft/winget-cli-restsource/issues/59) and [this](https://github.com/microsoft/winget-cli-restsource/issues/166))
 - Live reload of manifests (works for new and changed manifests, but removals are only picked up on restart)
-- Authentication (it's currently [not supported by winget](https://github.com/microsoft/winget-cli-restsource/issues/100))
 - Probably other stuff? It's work-in-progress - please submit an issue and/or PR if you notice anything!
 
 ## 🧭 Getting Started
@@ -67,6 +67,12 @@ Commandline arguments have the highest priority and take precedence over both en
         Set log verbosity: disable, error, warn, info, debug or trace (default "info")
   -manifestPath string
         The directory to search for package manifest files (default "./packages")
+  -sourceAuthEntraIDAuthorityURL string
+        Authority/Issuer URL of the EntraID App used for authenticating clients
+  -sourceAuthEntraIDResource string
+        ApplicationID of the EntraID App used for authenticating clients
+  -sourceAuthType string
+        Require authentication to interact with the REST API: none, microsoftEntraId (default "none")
   -trustedProxies string
         List of IPs from which to trust Client-IP headers (comma or space to separate)
   -version
@@ -91,6 +97,9 @@ REWINGED_HTTPSPRIVATEKEYFILE (string)
 REWINGED_LISTEN (string)
 REWINGED_LOGLEVEL (string)
 REWINGED_MANIFESTPATH (string)
+REWINGED_SOURCEAUTHENTRAIDAUTHORITYURL (string)
+REWINGED_SOURCEAUTHENTRAIDRESOURCE (string)
+REWINGED_SOURCEAUTHTYPE (string)
 REWINGED_TRUSTEDPROXIES (string)
 ```
 
@@ -113,6 +122,9 @@ rewinged will not look for any configuration file by default. Config file must b
   "listen": "localhost:8080",
   "logLevel": "info",
   "manifestPath": "./packages",
+  "sourceAuthEntraIDAuthorityURL": "",
+  "sourceAuthEntraIDResource": "",
+  "sourceAuthType": "none",
   "trustedProxies": ""
 }
 ```
@@ -231,6 +243,78 @@ to store them locally. For example:
 ```
 ./rewinged -autoInternalize -autoInternalizeSkip "internal.example.org github.com"
 ```
+
+## 🔒 Entra ID Authentication
+
+You can optionally enable Entra ID authentication for rewinged. This means only authorized users will be able to
+get software from the repository. Currently, this is an all-or-nothing setting meaning the entire source repository
+and all packages will require authentication to access, and you cannot restrict individual packages to specific
+groups of users yet. If a user is able to successfully authenticate with your Entra ID tenant they will be able
+to access everything in the repository. If they fail to authenticate, for example because you have not assigned the
+user aceess to rewinged or because of Conditional Access policies, they will not be able to access anything.
+
+On a hybrid- or cloud-only Entra ID-joined Windows device, the users authentication through winget to rewinged
+should be transparent and automatic (SSO). Otherwise the user will see authentication windows.
+
+To configure Entra ID Authentication, an application must be registered in your Entra ID tenant.
+
+<details>
+<summary><b>Register an application for use with winget REST source authentication in Entra ID</b></summary>
+
+The following is based on Microsofts [`New-MicrosoftEntraIdApp.ps1`](https://github.com/microsoft/winget-cli-restsource/blob/main/Tools/PowershellModule/src/Library/New-MicrosoftEntraIdApp.ps1) script.
+
+```powershell
+$ScopeId = [Guid]::NewGuid().ToString()
+$app = New-AzADApplication -DisplayName "rewinged" -SignInAudience AzureADMyOrg -RequestedAccessTokenVersion 2 -Api @{
+    oauth2PermissionScopes = @(
+        @{
+            adminConsentDescription = "Sign in to access rewinged REST source"
+            adminConsentDisplayName = "Access rewinged REST source"
+            userConsentDescription  = "Sign in to access rewinged REST source"
+            userConsentDisplayName  = "Access rewinged REST source"
+            id = $ScopeId
+            isEnabled = $true
+            type = "User"
+            value = "user_impersonation"
+        }
+    )
+    preAuthorizedApplications = @(
+        @{
+            # "App Installer"
+            appId = "7b8ea11a-7f45-4b3a-ab51-794d5863af15"
+            delegatedPermissionIds = @($ScopeId)
+        },
+        @{
+            # "Microsoft Azure CLI"
+            appId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+            delegatedPermissionIds = @($ScopeId)
+        },
+        @{
+            # "Microsoft Azure PowerShell"
+            appId = "1950a258-227b-4e31-a9cf-717495945fc2"
+            delegatedPermissionIds = @($ScopeId)
+        }
+    )
+}
+
+Update-AzADApplication -ApplicationId $app.AppId -IdentifierUri "api://$($app.AppId)"
+
+Write-Output "Done. Application Id: $($app.AppId)"
+```
+</details>
+
+Then start rewinged with the authentication-related configuration set:
+
+```
+./rewinged -https -sourceAuthType microsoftEntraId -sourceAuthEntraIDAuthorityURL "https://login.microsoftonline.com/<Your-Tenant-Id>/v2.0" -sourceAuthEntraIDResource "<Entra-Application-Id>"
+```
+
+<table>
+  <tr>
+    <th>⚠️</th>
+    <td>When you enable authentication, ensure all of your package manifests are ManifestVersion 1.10.0 or higher. Previous ManifestVersions did not fully support authentication and winget will not be able to correctly retrieve such packages when authentication is enabled.</td>
+  </tr>
+</table>
 
 ## Helpful reference documentation
 
