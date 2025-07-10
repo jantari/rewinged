@@ -27,64 +27,64 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, aut
     }
 
     // temporary map collecting all files belonging to a particular package
-    var nonSingletonsMap = make(map[models.MultiFileManifest][]models.ManifestTypeAndPath)
+    var nonSingletonsMap = make(map[models.MultiFileManifest][]models.ManifestNode)
 
     for _, file := range files {
       if !file.IsDir() {
         if caseInsensitiveHasSuffix(file.Name(), ".yml") || caseInsensitiveHasSuffix(file.Name(), ".yaml") {
-          var basemanifest, err = parseFileAsBaseManifest(filepath.Join(path, file.Name()))
+          var basemanifests, err = parseFileAsBaseManifests(filepath.Join(path, file.Name()))
           if err != nil {
             logging.Logger.Error().Err(err).Str("file", filepath.Join(path, file.Name())).Msgf("cannot unmarshal YAML file as BaseManifest")
             continue
           }
 
-          // There could be other, non winget-manifest YAML files in the manifestPath as well. Skip them.
-          // All valid manifest files must have all basemanifest fields set as they are required by the schema
-          if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
-            basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
-            if basemanifest.ManifestType == "singleton" {
-              logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
-              manifest, err := parseFileAsSingletonManifest(basemanifest.ManifestVersion, filepath.Join(path, file.Name()))
-              if err != nil {
-                logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msg("could not parse singleton manifest")
-              } else {
-                // Singleton manifests can only contain version of a package each
-                var version = manifest.GetVersions()[0]
+          for _, basemanifest := range basemanifests {
+            // There could be other, non winget-manifest YAML files/documents in the manifestPath as well. Skip them.
+            // All valid manifests must have all basemanifest fields set as they are required by the schema
+            if basemanifest.PackageIdentifier != "" && basemanifest.PackageVersion != "" &&
+              basemanifest.ManifestType != "" && basemanifest.ManifestVersion != "" {
+              if basemanifest.ManifestType == "singleton" {
+                logging.Logger.Debug().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("found singleton manifest")
+                manifest, err := parseNodeAsSingletonManifest(basemanifest.ManifestVersion, basemanifest.Node)
+                if err != nil {
+                  logging.Logger.Error().Err(err).Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msg("could not parse singleton manifest")
+                } else {
+                  // Singleton manifests can only contain version of a package each
+                  var version = manifest.GetVersions()[0]
 
-                // Internalization logic
-                if (autoInternalize) {
-                  var installers []models.API_InstallerInterface = version.GetInstallers()
+                  // Internalization logic
+                  if (autoInternalize) {
+                    var installers []models.API_InstallerInterface = version.GetInstallers()
 
-                  internalizeInstallers(basemanifest.PackageIdentifier, basemanifest.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts)
+                    internalizeInstallers(basemanifest.PackageIdentifier, basemanifest.PackageVersion, installers, autoInternalizePath, autoInternalizeSkipHosts)
 
-                  // Recreate manifest object, but with overwritten values (InstallerUrl(s))
-                  manifest, err = newAPIManifest(
-                    basemanifest.ManifestVersion,
-                    basemanifest.PackageIdentifier,
-                    basemanifest.PackageVersion,
-                    version.GetDefaultLocale(),
-                    version.GetLocales(),
-                    installers,
-                  )
+                    // Recreate manifest object, but with overwritten values (InstallerUrl(s))
+                    manifest, err = newAPIManifest(
+                      basemanifest.ManifestVersion,
+                      basemanifest.PackageIdentifier,
+                      basemanifest.PackageVersion,
+                      version.GetDefaultLocale(),
+                      version.GetLocales(),
+                      installers,
+                    )
 
-                  if err != nil {
-                    logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("error reconstructing package after overwrite")
+                    if err != nil {
+                      logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("error reconstructing package after overwrite")
+                    }
+
+                    version = manifest.GetVersions()[0]
                   }
+                  // End internalization logic
 
-                  version = manifest.GetVersions()[0]
+                  models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
                 }
-                // End internalization logic
-
-                models.Manifests.Set(manifest.GetPackageIdentifier(), basemanifest.PackageVersion, version)
+              } else if basemanifest.ManifestType == "merged" {
+                logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("merged manifests are not yet supported")
+              } else {
+                nonSingletonsMap[basemanifest.ToMultiFileManifest()] = append(nonSingletonsMap[basemanifest.ToMultiFileManifest()], *basemanifest)
               }
-            } else if basemanifest.ManifestType == "merged" {
-              logging.Logger.Error().Str("package", basemanifest.PackageIdentifier).Str("packageversion", basemanifest.PackageVersion).Msgf("merged manifests are not yet supported")
             } else {
-              typeAndPath := models.ManifestTypeAndPath{
-                ManifestType: basemanifest.ManifestType,
-                FilePath: filepath.Join(path, file.Name()),
-              }
-              nonSingletonsMap[basemanifest.ToMultiFileManifest()] = append(nonSingletonsMap[basemanifest.ToMultiFileManifest()], typeAndPath)
+              logging.Logger.Debug().Err(err).Str("file", filepath.Join(path, file.Name())).Int("line", basemanifest.Node.Line).Msg("YAML document is not a package manifest")
             }
           }
         }
@@ -94,7 +94,7 @@ func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, aut
     if len(nonSingletonsMap) > 0 {
       for key, value := range nonSingletonsMap {
         logging.Logger.Debug().Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("found multi-file manifest")
-        var mergedManifest, err = parseMultiFileManifest(key, value...)
+        var mergedManifest, err = parseMultiFileManifest(value...)
         if err != nil {
           logging.Logger.Error().Err(err).Str("package", key.PackageIdentifier).Str("packageversion", key.PackageVersion).Msgf("could not parse all manifest files for this package")
         } else {
@@ -223,7 +223,7 @@ func getManifests (path string) {
   }
 }
 
-func unmarshalVersionManifest (manifestVersion string, yamlData []byte) (models.Manifest_VersionManifestInterface, error) {
+func unmarshalVersionManifest (manifestVersion string, node yaml.Node) (models.Manifest_VersionManifestInterface, error) {
     var version models.Manifest_VersionManifestInterface
 
     switch manifestVersion {
@@ -247,7 +247,7 @@ func unmarshalVersionManifest (manifestVersion string, yamlData []byte) (models.
           return nil, errors.New("unsupported VersionManifest version " + manifestVersion)
     }
 
-    err := yaml.Unmarshal(yamlData, version)
+    err := node.Decode(version)
     if err != nil {
       return nil, err
     }
@@ -255,7 +255,7 @@ func unmarshalVersionManifest (manifestVersion string, yamlData []byte) (models.
     return version, nil
 }
 
-func unmarshalInstallerManifest (manifestVersion string, yamlData []byte) (models.Manifest_InstallerManifestInterface, error) {
+func unmarshalInstallerManifest (manifestVersion string, node yaml.Node) (models.Manifest_InstallerManifestInterface, error) {
     var installer models.Manifest_InstallerManifestInterface
 
     switch manifestVersion {
@@ -279,7 +279,7 @@ func unmarshalInstallerManifest (manifestVersion string, yamlData []byte) (model
             return nil, errors.New("unsupported InstallerManifest version " + manifestVersion)
     }
 
-    err := yaml.Unmarshal(yamlData, installer)
+    err := node.Decode(installer)
     if err != nil {
       return nil, err
     }
@@ -287,7 +287,7 @@ func unmarshalInstallerManifest (manifestVersion string, yamlData []byte) (model
     return installer, nil
 }
 
-func unmarshalLocaleManifest (manifestVersion string, yamlData []byte) (models.Manifest_LocaleManifestInterface, error) {
+func unmarshalLocaleManifest (manifestVersion string, node yaml.Node) (models.Manifest_LocaleManifestInterface, error) {
     var locale models.Manifest_LocaleManifestInterface
 
     switch manifestVersion {
@@ -311,7 +311,7 @@ func unmarshalLocaleManifest (manifestVersion string, yamlData []byte) (models.M
             return nil, errors.New("unsupported LocaleManifest version " + manifestVersion)
     }
 
-    err := yaml.Unmarshal(yamlData, locale)
+    err := node.Decode(locale)
     if err != nil {
         return nil, err
     }
@@ -319,7 +319,7 @@ func unmarshalLocaleManifest (manifestVersion string, yamlData []byte) (models.M
     return locale, nil
 }
 
-func unmarshalDefaultLocaleManifest (manifestVersion string, yamlData []byte) (models.Manifest_DefaultLocaleManifestInterface, error) {
+func unmarshalDefaultLocaleManifest (manifestVersion string, node yaml.Node) (models.Manifest_DefaultLocaleManifestInterface, error) {
     var defaultlocale models.Manifest_DefaultLocaleManifestInterface
 
     switch manifestVersion {
@@ -343,7 +343,7 @@ func unmarshalDefaultLocaleManifest (manifestVersion string, yamlData []byte) (m
             return nil, errors.New("unsupported DefaultLocaleManifest version " + manifestVersion)
     }
 
-    err := yaml.Unmarshal(yamlData, defaultlocale)
+    err := node.Decode(defaultlocale)
     if err != nil {
         return nil, err
     }
@@ -351,9 +351,9 @@ func unmarshalDefaultLocaleManifest (manifestVersion string, yamlData []byte) (m
     return defaultlocale, nil
 }
 
-func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files ...models.ManifestTypeAndPath) (models.API_ManifestInterface, error) {
-  if len(files) <= 0 {
-    return nil, errors.New("you must provide at least one filename for reading values")
+func parseMultiFileManifest (nodes ...models.ManifestNode) (models.API_ManifestInterface, error) {
+  if len(nodes) <= 0 {
+    return nil, errors.New("you must provide at least one ManifestNode for reading values")
   }
 
   versions   := []models.Manifest_VersionManifestInterface{}
@@ -361,41 +361,37 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
   locales    := []models.Manifest_LocaleManifestInterface{}
   var defaultlocale models.Manifest_DefaultLocaleManifestInterface
 
-  for _, file := range files {
-    yamlFile, err := os.ReadFile(file.FilePath)
-    if err != nil {
-      logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot read file")
-      continue
-    }
-    switch file.ManifestType {
+  for _, node := range nodes {
+    var err error
+    switch node.ManifestType {
       case "version":
         var version models.Manifest_VersionManifestInterface
-        version, err = unmarshalVersionManifest(multifilemanifest.ManifestVersion, yamlFile)
+        version, err = unmarshalVersionManifest(node.ManifestVersion, node.Node)
         if err != nil {
-          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal version manifest")
           continue
         }
         versions = append(versions, version)
       case "installer":
         var installer models.Manifest_InstallerManifestInterface
-        installer, err = unmarshalInstallerManifest(multifilemanifest.ManifestVersion, yamlFile)
+        installer, err = unmarshalInstallerManifest(node.ManifestVersion, node.Node)
         if err != nil {
-          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal installer manifest")
           continue
         }
         installers = append(installers, installer)
       case "locale":
         var locale models.Manifest_LocaleManifestInterface
-        locale, err = unmarshalLocaleManifest(multifilemanifest.ManifestVersion, yamlFile)
+        locale, err = unmarshalLocaleManifest(node.ManifestVersion, node.Node)
         if err != nil {
-          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal locale manifest")
           continue
         }
         locales = append(locales, locale)
       case "defaultLocale":
-        defaultlocale, err = unmarshalDefaultLocaleManifest(multifilemanifest.ManifestVersion, yamlFile)
+        defaultlocale, err = unmarshalDefaultLocaleManifest(node.ManifestVersion, node.Node)
         if err != nil {
-          logging.Logger.Error().Str("file", file.FilePath).Err(err).Msg("cannot unmarshal manifest file")
+          logging.Logger.Error().Err(err).Msg("cannot unmarshal defaultLocale manifest")
           continue
         }
       default:
@@ -427,10 +423,12 @@ func parseMultiFileManifest (multifilemanifest models.MultiFileManifest, files .
     apiInstallers = append(apiInstallers, v.ToApiInstallers()...)
   }
 
+  // We know we have at least 1 node because otherwise we fail early, and that all nodes' PackageIdentifier,
+  // PackageVersion and ManifestVersion are identical because that's what they were grouped by.
   manifest, err := newAPIManifest(
-    multifilemanifest.ManifestVersion,
-    multifilemanifest.PackageIdentifier,
-    versions[0].GetPackageVersion(),
+    nodes[0].ManifestVersion,
+    nodes[0].PackageIdentifier,
+    nodes[0].PackageVersion,
     defaultlocale.ToApiDefaultLocale(),
     apiLocales,
     apiInstallers,
@@ -624,27 +622,45 @@ func newAPIManifest (
   return apiReturnManifest, nil
 }
 
-func parseFileAsBaseManifest (path string) (*models.BaseManifest, error) {
-  manifest := &models.BaseManifest{}
-  yamlFile, err := os.ReadFile(path)
+// One file could contain multiple manifests, using YAML document separators ("---")
+func parseFileAsBaseManifests (path string) ([]*models.ManifestNode, error) {
+  manifests := []*models.ManifestNode{}
+
+  yamlFile, err := os.Open(path)
   if err != nil {
-    return manifest, err
+    return manifests, err
+  }
+  defer yamlFile.Close()
+
+  // Decode all YAML documents in the YAML file.
+  // This allows for multiple manifests, or non-manifest
+  // metadata to be in one file, separated by "---".
+  fileDecoder := yaml.NewDecoder(yamlFile)
+  for {
+    var node yaml.Node
+    if err := fileDecoder.Decode(&node); err == io.EOF {
+      break
+    } else if err != nil {
+      return manifests, err
+    }
+
+    manifest := &models.ManifestNode{}
+    if err := node.Decode(manifest); err != nil {
+      return manifests, err
+    }
+    manifest.Node = node
+
+    manifests = append(manifests, manifest)
   }
 
-  err = yaml.Unmarshal(yamlFile, manifest)
-  return manifest, err
+  return manifests, err
 }
 
-func parseFileAsSingletonManifest (manifestVersion string, path string) (models.API_ManifestInterface, error) {
+func parseNodeAsSingletonManifest (manifestVersion string, node yaml.Node) (models.API_ManifestInterface, error) {
   var manifest models.API_ManifestInterface
-
-  yamlFile, err := os.ReadFile(path)
-  if err != nil {
-    return manifest, err
-  }
-
   var singleton models.Manifest_SingletonManifestInterface
-  singleton, err = unmarshalSingletonManifest(manifestVersion, yamlFile)
+
+  singleton, err := unmarshalSingletonManifest(manifestVersion, node)
   if err == nil {
     manifest = singleton.ToApiManifest()
   }
@@ -652,7 +668,7 @@ func parseFileAsSingletonManifest (manifestVersion string, path string) (models.
   return manifest, err
 }
 
-func unmarshalSingletonManifest (manifestVersion string, yamlData []byte) (models.Manifest_SingletonManifestInterface, error) {
+func unmarshalSingletonManifest (manifestVersion string, node yaml.Node) (models.Manifest_SingletonManifestInterface, error) {
     var smanifest models.Manifest_SingletonManifestInterface
 
     switch manifestVersion {
@@ -676,7 +692,7 @@ func unmarshalSingletonManifest (manifestVersion string, yamlData []byte) (model
             return nil, errors.New("unsupported SingletonManifest version " + manifestVersion)
     }
 
-    err := yaml.Unmarshal(yamlData, smanifest)
+    err := node.Decode(smanifest)
     if err != nil {
         return nil, err
     }

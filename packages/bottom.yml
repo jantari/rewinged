@@ -16,3 +16,7 @@ Installers:
     DownloadCommandProhibited: true
 ManifestType: singleton
 ManifestVersion: 1.6.0
+
+---
+testing: 123
+---

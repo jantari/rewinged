@@ -6,13 +6,15 @@ import (
     "reflect"
 
     "rewinged/logging"
+
+    "gopkg.in/yaml.v3"
 )
 
-// This is used when discovering manifest
-// files and passing them around internally
-type ManifestTypeAndPath struct {
-    ManifestType string
-    FilePath string
+// This holds all BaseManifest information for easy access as well as
+// a complete copy of the YAML document or node as ingested from disk.
+type ManifestNode struct {
+    BaseManifest `yaml:",inline"`
+    Node yaml.Node `yaml:"-"`
 }
 
 func getMapValues[M ~map[K]V, K comparable, V any](m M) []V {
