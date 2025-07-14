@@ -13,10 +13,13 @@ import (
     "net/http"
     "net/netip"
     "path/filepath"
+
     // Configuration
     "github.com/peterbourgon/ff/v3"
+    "gopkg.in/yaml.v3"
 
-    "github.com/rjeczalik/notify" // for live-reload of manifests
+    // for live-reload of manifests
+    "github.com/rjeczalik/notify"
 
     "rewinged/settings"
     "rewinged/logging"
@@ -49,6 +52,7 @@ func main() {
         sourceAuthTypePtr             = fs.String("sourceAuthType", "none", "Require authentication to interact with the REST API: none, microsoftEntraId")
         sourceAuthEntraIDResourcePtr  = fs.String("sourceAuthEntraIDResource", "", "ApplicationID of the EntraID App used for authenticating clients")
         sourceAuthEntraIDAuthorityURL = fs.String("sourceAuthEntraIDAuthorityURL", "", "Authority/Issuer URL of the EntraID App used for authenticating clients")
+        packageAuthorizationRulesPtr = fs.String("packageAuthorizationRulesFile", "", "Path to a YAML file defining granular allow/deny rules (optional)")
         logLevelPtr            = fs.String("logLevel", "info", "Set log verbosity: disable, error, warn, info, debug or trace")
         trustedProxiesPtr      = fs.String("trustedProxies", "", "List of IPs from which to trust Client-IP headers (comma or space to separate)")
         _                      = fs.String("configFile", "", "Path to a json configuration file (optional)")
@@ -119,6 +123,22 @@ func main() {
             logging.TrustedProxies = append(logging.TrustedProxies, prefix)
         }
     }
+
+    authConfig := models.GetInitialAuthorizationConfig_1()
+    if (*packageAuthorizationRulesPtr != "") {
+        authConfigFile, err := os.Open(*packageAuthorizationRulesPtr)
+        if err == nil {
+            fileDecoder := yaml.NewDecoder(authConfigFile)
+            err = fileDecoder.Decode(&authConfig)
+            if err != nil {
+                logging.Logger.Fatal().Err(err).Msgf("error unmarshaling packageAuthorizationRules file")
+            }
+        } else {
+            logging.Logger.Fatal().Err(err).Msgf("error opening packageAuthorizationRules file")
+        }
+    }
+    logging.Logger.Debug().Msgf("packageAuthorizationRules: %+v", authConfig)
+    // TODO: actually enforce this ruleset
 
     logging.Logger.Debug().Msg("searching for manifests")
 

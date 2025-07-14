@@ -1,6 +1,7 @@
 package models
 
 import (
+    "fmt"
     "sync"
     "strings"
     "reflect"
@@ -9,6 +10,85 @@ import (
 
     "gopkg.in/yaml.v3"
 )
+
+// WiP: Reading per-package authorization settings from a user-defined YAML file
+type AuthorizationConfig_1 struct {
+    Version int `yaml:"Version"`
+    Default AuthorizationRuleset_1 `yaml:"Default"`
+    Global AuthorizationRuleset_1 `yaml:"Global"`
+    Rules []struct {
+        PackageIdentifier string `yaml:"PackageIdentifier"`
+        PackageVersion    string `yaml:"PackageVersion"`
+        AuthorizationRuleset_1 `yaml:",inline"`
+    } `yaml:"Rules"`
+}
+
+func GetInitialAuthorizationConfig_1() AuthorizationConfig_1 {
+    newConfig := &AuthorizationConfig_1{}
+    newConfig.Default.allowAll = true
+    return *newConfig
+}
+
+type AuthorizationAllowRule_1 struct {
+    Allow    []string `yaml:"Allow"`
+    allowAll bool
+}
+
+type AuthorizationDenyRule_1 struct {
+    Deny     []string `yaml:"Deny"`
+    denyAll  bool
+}
+
+func (c *AuthorizationAllowRule_1) UnmarshalYAML(value *yaml.Node) error {
+    type raw AuthorizationAllowRule_1
+    var aux raw
+    if err := value.Decode(&aux); err != nil {
+        var auxWildcard struct {
+            Allow string `yaml:"Allow"`
+        }
+        if err := value.Decode(&auxWildcard); err != nil {
+            return err
+        }
+        if auxWildcard.Allow == "*" {
+            aux.Allow = []string{}
+            aux.allowAll = true
+        } else {
+            return fmt.Errorf("Allow must be a list or the special value *")
+        }
+    }
+
+    *c = AuthorizationAllowRule_1(aux)
+    return nil
+}
+
+func (c *AuthorizationDenyRule_1) UnmarshalYAML(value *yaml.Node) error {
+    type raw AuthorizationDenyRule_1
+    var aux raw
+    if err := value.Decode(&aux); err != nil {
+        var auxWildcard struct {
+            Deny string `yaml:"Deny"`
+        }
+        if err := value.Decode(&auxWildcard); err != nil {
+            return err
+        }
+        if auxWildcard.Deny == "*" {
+            aux.Deny = []string{}
+            aux.denyAll = true
+        } else {
+            return fmt.Errorf("Deny must be a list or the special value *")
+        }
+    }
+
+    *c = AuthorizationDenyRule_1(aux)
+    return nil
+}
+
+type AuthorizationRuleset_1 struct {
+    AuthorizationAllowRule_1 `yaml:",inline"`
+    AuthorizationDenyRule_1 `yaml:",inline"`
+}
+
+
 
 // This holds all BaseManifest information for easy access as well as
 // a complete copy of the YAML document or node as ingested from disk.
