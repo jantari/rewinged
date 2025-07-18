@@ -2,6 +2,7 @@ package settings
 
 import (
     "net/netip"
+    "rewinged/models"
 )
 
 var (
@@ -9,4 +10,5 @@ var (
     SourceAuthenticationType = "none"
     SourceAuthenticationEntraIDResource = ""
     SourceAuthenticationEntraIDAuthorityURL = ""
+    PackageAuthorizationConfig = models.GetInitialAuthorizationConfig_1()
 )

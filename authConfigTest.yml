@@ -12,25 +12,28 @@ Version: 1
 # Defaults are ONLY applied for packages with NO explicit rules configured.
 # Any explicit rule automatically replaces the Defaults for its package.
 Default:
-  Allow: [user1]
+  Allow: [group1]
   Deny: '*'
 # Globals are applied to ALL packages, with and without explicit rules.
-# They are merged into the effective ruleset of every package. Setting
-# Global "Allow" can allow all package for a specific group unless explicitly
-# denied (since Deny takes precedence). Setting Global Deny may be used to
-# prevent a user from accessing anything even if they are a member of many
-# allowed groups on many packages without having to do many individual edits.
+# They are merged into the effective ruleset of every package and thus
+# also replace Defaults. Setting Global "Allow" can allow all package
+# for a specific group unless explicitly denied (since Deny takes
+# precedence). Setting Global Deny may be used to prevent a user from
+# accessing anything even if they are a member of many allowed groups
+# on many packages without having to do many individual edits.
 Global:
-  Allow: [groupA]
+  Allow: '*'
   Deny: []
 Rules:
   # No PackageVersion set implies all PackageVersions (like '*')
   - PackageIdentifier: Git.Git
-    Allow: [groupB]
-  - PackageIdentifier: Git.Git
-    PackageVersion: 2.48.1
-    Deny: [groupA]
+    Allow: [group2]
     # Testing an invalid field. It will be accepted unfortunately because we cannot use KnownFields(true):
     # https://github.com/go-yaml/yaml/issues/642
     # https://github.com/go-yaml/yaml/issues/460
     UnknownField: UnknownValue
+#  - PackageIdentifier: rewinged.bottom
+#    Allow: [group1]
+  - PackageIdentifier: rewinged.bottom
+    Allow: '*'
+    Deny: [group1]

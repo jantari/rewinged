@@ -12,8 +12,66 @@ import (
 )
 
 func GetPackages(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    groups, ok := ctx.Value("groups").([]string)
+    if !ok {
+        logging.Logger.Error().Msg("no or invalid groups in request context")
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        return
+    }
+
+    //// Per-Package Authorization processing
+    //// Works, but still work in progress
+    var globallyDenied bool = false
+    allowedPackages := []models.API_Package{}
+
+    var initialAllowValue bool = false
+    switch EVALUATE_RULE(settings.PackageAuthorizationConfig.Global, groups) {
+    case -1:
+        logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages denied for user")
+        // If we hit a global deny, there's no coming back from that. Skip all rule processing.
+        globallyDenied = true
+    case 0:
+        // If the global rule doesn't affect this user, we start all packages with the decision of the default rule
+        initialAllowValue = EVALUATE_RULE(settings.PackageAuthorizationConfig.Default, groups) == 1
+    case 1:
+        logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages allowed for user")
+        initialAllowValue = true
+    }
+
+    if !globallyDenied {
+        // Initialize a map of all packages with allow true/false status
+        packageAllowed := make(map[models.API_Package]bool)
+
+        PackageLoop:
+        for _, pkg := range models.Manifests.GetAllPackageIdentifiers() {
+            packageAllowed[pkg] = initialAllowValue
+
+            for ruleIdx, rule := range settings.PackageAuthorizationConfig.Rules {
+                if rule.PackageIdentifier == pkg.PackageIdentifier && rule.PackageVersion == "" {
+                    switch EVALUATE_RULE(rule.AuthorizationRuleset_1, groups) {
+                    case -1:
+                        logging.Logger.Debug().Str("PackageIdentifier", pkg.PackageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package denied for user")
+                        // On deny, mark the package as not allowed and stop processing it further
+                        packageAllowed[pkg] = false
+                        continue PackageLoop
+                    case 1:
+                        logging.Logger.Debug().Str("PackageIdentifier", pkg.PackageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package allowed for user")
+                        packageAllowed[pkg] = true
+                    }
+                }
+            }
+        }
+
+        for pkg, allowed := range packageAllowed {
+            if allowed {
+                allowedPackages = append(allowedPackages, pkg)
+            }
+        }
+    }
+
     response := &models.API_PackageMultipleResponse{
-        Data: models.Manifests.GetAllPackageIdentifiers(),
+        Data: allowedPackages,
     }
 
     logging.Logger.Debug().Msgf("%v", response)

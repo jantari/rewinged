@@ -25,18 +25,18 @@ type AuthorizationConfig_1 struct {
 
 func GetInitialAuthorizationConfig_1() AuthorizationConfig_1 {
     newConfig := &AuthorizationConfig_1{}
-    newConfig.Default.allowAll = true
+    newConfig.Default.AllowAll = true
     return *newConfig
 }
 
 type AuthorizationAllowRule_1 struct {
     Allow    []string `yaml:"Allow"`
-    allowAll bool
+    AllowAll bool `yaml:"-"`
 }
 
 type AuthorizationDenyRule_1 struct {
     Deny     []string `yaml:"Deny"`
-    denyAll  bool
+    DenyAll  bool `yaml:"-"`
 }
 
 func (c *AuthorizationAllowRule_1) UnmarshalYAML(value *yaml.Node) error {
@@ -51,7 +51,7 @@ func (c *AuthorizationAllowRule_1) UnmarshalYAML(value *yaml.Node) error {
         }
         if auxWildcard.Allow == "*" {
             aux.Allow = []string{}
-            aux.allowAll = true
+            aux.AllowAll = true
         } else {
             return fmt.Errorf("Allow must be a list or the special value *")
         }
@@ -73,7 +73,7 @@ func (c *AuthorizationDenyRule_1) UnmarshalYAML(value *yaml.Node) error {
         }
         if auxWildcard.Deny == "*" {
             aux.Deny = []string{}
-            aux.denyAll = true
+            aux.DenyAll = true
         } else {
             return fmt.Errorf("Deny must be a list or the special value *")
         }
