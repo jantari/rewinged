@@ -22,10 +22,10 @@ func GetPackages(w http.ResponseWriter, r *http.Request) {
 
     //// Per-Package Authorization processing
     //// Works, but still work in progress
-    var globallyDenied bool = false
     allowedPackages := []models.API_Package{}
-
+    var globallyDenied bool = false
     var initialAllowValue bool = false
+
     switch EVALUATE_RULE(settings.PackageAuthorizationConfig.Global, groups) {
     case -1:
         logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages denied for user")
@@ -40,12 +40,9 @@ func GetPackages(w http.ResponseWriter, r *http.Request) {
     }
 
     if !globallyDenied {
-        // Initialize a map of all packages with allow true/false status
-        packageAllowed := make(map[models.API_Package]bool)
-
         PackageLoop:
         for _, pkg := range models.Manifests.GetAllPackageIdentifiers() {
-            packageAllowed[pkg] = initialAllowValue
+            var packageAllowed bool = initialAllowValue
 
             for ruleIdx, rule := range settings.PackageAuthorizationConfig.Rules {
                 if rule.PackageIdentifier == pkg.PackageIdentifier && rule.PackageVersion == "" {
@@ -53,18 +50,15 @@ func GetPackages(w http.ResponseWriter, r *http.Request) {
                     case -1:
                         logging.Logger.Debug().Str("PackageIdentifier", pkg.PackageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package denied for user")
                         // On deny, mark the package as not allowed and stop processing it further
-                        packageAllowed[pkg] = false
                         continue PackageLoop
                     case 1:
                         logging.Logger.Debug().Str("PackageIdentifier", pkg.PackageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package allowed for user")
-                        packageAllowed[pkg] = true
+                        packageAllowed = true
                     }
                 }
             }
-        }
 
-        for pkg, allowed := range packageAllowed {
-            if allowed {
+            if packageAllowed {
                 allowedPackages = append(allowedPackages, pkg)
             }
         }
@@ -96,7 +90,24 @@ func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request
     Data: nil,
   }
 
-  var pkg []models.API_ManifestVersionInterface = models.Manifests.GetAllVersions(r.PathValue("package_identifier"))
+  ctx := r.Context()
+  groups, ok := ctx.Value("groups").([]string)
+  if !ok {
+      logging.Logger.Error().Msg("no or invalid groups in request context")
+      http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+      return
+  }
+
+  var pkg []models.API_ManifestVersionInterface
+  globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
+
+  if !globallyDenied {
+      var packageAllowed bool = initialAllowValue
+      FilterAuthorizedPackage(&packageAllowed, r.PathValue("package_identifier"), groups)
+      if packageAllowed {
+          pkg = models.Manifests.GetAllVersions(r.PathValue("package_identifier"))
+      }
+  }
 
   if this.InternalizationEnabled {
       var rewrittenOrigin string

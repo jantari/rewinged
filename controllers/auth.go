@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"context"
 	"net/http"
 	"strings"
@@ -101,3 +102,57 @@ func arraysIntersect[A comparable](arr1 []A, arr2 []A) (bool) {
     }
     return false
 }
+
+func GetFilterInitialValue(groups []string) (bool, bool) {
+    var globallyDenied bool = false
+    var initialAllowValue bool = false
+
+    switch EVALUATE_RULE(settings.PackageAuthorizationConfig.Global, groups) {
+    case -1:
+        logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages denied for user")
+        // If we hit a global deny, there's no coming back from that. Skip all rule processing.
+        globallyDenied = true
+    case 0:
+        // If the global rule doesn't affect this user, we start all packages with the decision of the default rule
+        initialAllowValue = EVALUATE_RULE(settings.PackageAuthorizationConfig.Default, groups) == 1
+    case 1:
+        logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages allowed for user")
+        initialAllowValue = true
+    }
+
+    return globallyDenied, initialAllowValue
+}
+
+func FilterAuthorizedPackage(decision *bool, packageIdentifier string, groups []string) {
+    for ruleIdx, rule := range settings.PackageAuthorizationConfig.Rules {
+        if rule.PackageIdentifier == packageIdentifier && rule.PackageVersion == "" {
+            switch EVALUATE_RULE(rule.AuthorizationRuleset_1, groups) {
+            case -1:
+                logging.Logger.Debug().Str("PackageIdentifier", packageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package denied for user")
+                // On deny, mark the package as not allowed and stop processing it further
+                *decision = false
+                return
+            case 1:
+                logging.Logger.Debug().Str("PackageIdentifier", packageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package allowed for user")
+                *decision = true
+            }
+        }
+    }
+}
+
+/*
+// How to use the above 2 functions:
+
+allowedPackages := []models.API_Package{}
+globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
+
+if !globallyDenied {
+    for _, pkg := range models.Manifests.GetAllPackageIdentifiers() {
+        var packageAllowed bool = initialAllowValue
+        FilterAuthorizedPackage(&packageAllowed, pkg.PackageIdentifier, groups)
+        if packageAllowed {
+            allowedPackages = append(allowedPackages, pkg)
+        }
+    }
+}
+*/
