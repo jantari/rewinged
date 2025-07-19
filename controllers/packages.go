@@ -20,44 +20,13 @@ func GetPackages(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    //// Per-Package Authorization processing
-    //// Works, but still work in progress
     allowedPackages := []models.API_Package{}
-    var globallyDenied bool = false
-    var initialAllowValue bool = false
-
-    switch EVALUATE_RULE(settings.PackageAuthorizationConfig.Global, groups) {
-    case -1:
-        logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages denied for user")
-        // If we hit a global deny, there's no coming back from that. Skip all rule processing.
-        globallyDenied = true
-    case 0:
-        // If the global rule doesn't affect this user, we start all packages with the decision of the default rule
-        initialAllowValue = EVALUATE_RULE(settings.PackageAuthorizationConfig.Default, groups) == 1
-    case 1:
-        logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages allowed for user")
-        initialAllowValue = true
-    }
+    globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
 
     if !globallyDenied {
-        PackageLoop:
         for _, pkg := range models.Manifests.GetAllPackageIdentifiers() {
             var packageAllowed bool = initialAllowValue
-
-            for ruleIdx, rule := range settings.PackageAuthorizationConfig.Rules {
-                if rule.PackageIdentifier == pkg.PackageIdentifier && rule.PackageVersion == "" {
-                    switch EVALUATE_RULE(rule.AuthorizationRuleset_1, groups) {
-                    case -1:
-                        logging.Logger.Debug().Str("PackageIdentifier", pkg.PackageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package denied for user")
-                        // On deny, mark the package as not allowed and stop processing it further
-                        continue PackageLoop
-                    case 1:
-                        logging.Logger.Debug().Str("PackageIdentifier", pkg.PackageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package allowed for user")
-                        packageAllowed = true
-                    }
-                }
-            }
-
+            FilterAuthorizedPackage(&packageAllowed, pkg.PackageIdentifier, groups)
             if packageAllowed {
                 allowedPackages = append(allowedPackages, pkg)
             }
@@ -230,20 +199,43 @@ func SearchForPackage(w http.ResponseWriter, r *http.Request) {
     Data: []models.API_ManifestSearchResponse[models.API_ManifestSearchVersion_1_1_0] {},
   }
 
+  ctx := r.Context()
+  groups, ok := ctx.Value("groups").([]string)
+  if !ok {
+    logging.Logger.Error().Msg("no or invalid groups in request context")
+    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+    return
+  }
+
+  globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
+
   // results is a map where the PackageIdentifier is the key
   // and the values are arrays of manifests with that PackageIdentifier.
   // This means the values will be different versions of the package.
   var results map[string][]models.API_ManifestVersionInterface
 
-  if post.Query.KeyWord != "" {
-    logging.Logger.Debug().Msgf("someone searched the repo for: %v", post.Query.KeyWord)
-    results = models.Manifests.GetByKeyword(post.Query.KeyWord)
-  } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
-    logging.Logger.Debug().Msg("advanced search with inclusions[] and/or filters[]")
-    results = models.Manifests.GetByMatchFilter(post.Inclusions, post.Filters)
-  }
+  if !globallyDenied {
+    if post.Query.KeyWord != "" {
+      logging.Logger.Debug().Msgf("someone searched the repo for: %v", post.Query.KeyWord)
+      results = models.Manifests.GetByKeyword(post.Query.KeyWord)
+    } else if (post.Inclusions != nil && len(post.Inclusions) > 0) || (post.Filters != nil && len(post.Filters) > 0) {
+      logging.Logger.Debug().Msg("advanced search with inclusions[] and/or filters[]")
+      results = models.Manifests.GetByMatchFilter(post.Inclusions, post.Filters)
+    }
 
-  logging.Logger.Debug().Msgf("with %v results", len(results))
+    logging.Logger.Debug().Msgf("with %v results", len(results))
+
+    for packageId := range results {
+      var packageAllowed bool = initialAllowValue
+      FilterAuthorizedPackage(&packageAllowed, packageId, groups)
+      if !packageAllowed {
+        // It is safe to delete map elements during iteration
+        delete(results, packageId)
+      }
+    }
+  } else {
+    logging.Logger.Debug().Msg("user is globally denied, not even looking for packages")
+  }
 
   if len(results) > 0 {
     for packageId, packageVersions := range results {
