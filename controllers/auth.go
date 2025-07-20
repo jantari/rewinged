@@ -5,7 +5,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"encoding/json"
 
 	"rewinged/models"
 	"rewinged/logging"
@@ -14,7 +13,29 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
-func JWTAuthMiddleware(next http.Handler) http.Handler {
+// This middleware sits first in the Auth-Stack and chooses the next handler
+// to pass the request along to based on the configured authentication type,
+// which currently is either "none" or "microsoftEntraId".
+func AuthMiddleware(next http.Handler, authType string) http.Handler {
+    switch authType {
+    case "none":
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            r = r.WithContext(
+                context.WithValue(r.Context(), "groups", []string{}),
+            )
+
+            next.ServeHTTP(w, r)
+        })
+    case "microsoftEntraId":
+        return EntraIdAuthMiddleware(next)
+    default:
+        logging.Logger.Fatal().Msg("sourceAuthType must be either none or microsoftEntraId")
+    }
+
+    return nil
+}
+
+func EntraIdAuthMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         rawAuthHeader := r.Header.Get("Authorization")
         if rawAuthHeader == "" {
@@ -49,14 +70,14 @@ func JWTAuthMiddleware(next http.Handler) http.Handler {
         logging.Logger.Debug().Msgf("OIDC token info: User (sub) '%v' from IdP (iss) '%v' authenticated", parsedToken.Subject, parsedToken.Issuer)
 
         // dump claims for debugging
-        allclaims := map[string]interface{}{}
-        if err:= parsedToken.Claims(&allclaims); err != nil {
-            logging.Logger.Err(err).Msg("failed to parse JWT claims")
-            http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-            return
-        }
-        allclaimsJSON, _ := json.MarshalIndent(allclaims, "", "  ")
-        logging.Logger.Debug().Msg(string(allclaimsJSON))
+        //allclaims := map[string]interface{}{}
+        //if err:= parsedToken.Claims(&allclaims); err != nil {
+        //    logging.Logger.Err(err).Msg("failed to parse JWT claims")
+        //    http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+        //    return
+        //}
+        //allclaimsJSON, _ := json.MarshalIndent(allclaims, "", "  ")
+        //logging.Logger.Debug().Msg(string(allclaimsJSON))
 
         // Get groups for authorization
         var claims struct {

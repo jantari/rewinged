@@ -215,31 +215,21 @@ func main() {
     fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))
     router.HandleFunc("GET /api/information", controllers.GetInformation)
 
-    switch settings.SourceAuthenticationType {
-    case "none":
-        router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
-        router.Handle("GET /api/packages", http.HandlerFunc(controllers.GetPackages))
-        router.Handle("POST /api/manifestSearch", http.HandlerFunc(controllers.SearchForPackage))
-        router.Handle("GET /api/packageManifests/{package_identifier}", http.HandlerFunc(getPackagesConfig.GetPackage))
-    case "microsoftEntraId":
-        router.Handle("/installers/", http.StripPrefix("/installers", controllers.JWTAuthMiddleware(hideDirectoryListings(fileServer))))
-        router.Handle("GET /api/packages", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.GetPackages)))
-        router.Handle("POST /api/manifestSearch", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.SearchForPackage)))
-        router.Handle("GET /api/packageManifests/{package_identifier}", controllers.JWTAuthMiddleware(http.HandlerFunc(getPackagesConfig.GetPackage)))
-    default:
-        logging.Logger.Fatal().Msg("sourceAuthType must be either none or microsoftEntraId")
-    }
+    router.Handle("/installers/", http.StripPrefix("/installers", controllers.AuthMiddleware(hideDirectoryListings(fileServer), settings.SourceAuthenticationType)))
+    router.Handle("GET /api/packages", controllers.AuthMiddleware(http.HandlerFunc(controllers.GetPackages), settings.SourceAuthenticationType))
+    router.Handle("POST /api/manifestSearch", controllers.AuthMiddleware(http.HandlerFunc(controllers.SearchForPackage), settings.SourceAuthenticationType))
+    router.Handle("GET /api/packageManifests/{package_identifier}", controllers.AuthMiddleware(http.HandlerFunc(getPackagesConfig.GetPackage), settings.SourceAuthenticationType))
 
-    logging_router := logging.RequestLogger(router)
+    loggingRouter := logging.RequestLogger(router)
 
     if *tlsEnablePtr {
         logging.Logger.Info().Msgf("starting server on https://%v", *listenAddrPtr)
-        if err := http.ListenAndServeTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr, logging_router); err != nil {
+        if err := http.ListenAndServeTLS(*listenAddrPtr, *tlsCertificatePtr, *tlsPrivateKeyPtr, loggingRouter); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     } else {
         logging.Logger.Info().Msgf("starting server on http://%v", *listenAddrPtr)
-        if err := http.ListenAndServe(*listenAddrPtr, logging_router); err != nil {
+        if err := http.ListenAndServe(*listenAddrPtr, loggingRouter); err != nil {
             logging.Logger.Fatal().Err(err).Msg("could not start webserver")
         }
     }
