@@ -154,10 +154,6 @@ func main() {
     getManifests(*packagePathPtr)
     wg.Wait()
 
-    // I don't know whether this is safe.
-    // if manifests is just a reference-copy of manifests2 then it wouldn't be I think?
-    // But *currently* since live-reload isn't implemented yet, manifests2 won't be written
-    // to after this point so it's safe for now - TODO: only access manifests2 in a thread-safe way
     logging.Logger.Info().Msgf("found %v package manifests", models.Manifests.GetManifestCount())
 
     logging.Logger.Info().Msg("watching manifestPath for changes")
