@@ -97,18 +97,33 @@ func EntraIdAuthMiddleware(next http.Handler) http.Handler {
     })
 }
 
-// result:
-// -1 denied
-//  0 not allowed
-//  1 allowed
-func EVALUATE_RULE(rule models.AuthorizationRuleset_1, groups []string) (result int) {
+type AuthorizationRuleDecision int
+const (
+    Denied AuthorizationRuleDecision = iota
+    Unchanged
+    Allowed
+)
+func (ard AuthorizationRuleDecision) String() string {
+    switch ard {
+    case Denied:
+        return "Denied"
+    case Unchanged:
+        return "Unchanged"
+    case Allowed:
+        return "Allowed"
+    default:
+        return "Unknown"
+    }
+}
+
+func EVALUATE_RULE(rule models.AuthorizationRuleset_1, groups []string) (AuthorizationRuleDecision) {
   if rule.DenyAll || arraysIntersect(rule.Deny, groups) {
-    return -1
+    return Denied
   }
   if rule.AllowAll || arraysIntersect(rule.Allow, groups) {
-    return 1
+    return Allowed
   }
-  return 0
+  return Unchanged
 }
 
 func arraysIntersect[A comparable](arr1 []A, arr2 []A) (bool) {
@@ -124,56 +139,44 @@ func arraysIntersect[A comparable](arr1 []A, arr2 []A) (bool) {
     return false
 }
 
-func GetFilterInitialValue(groups []string) (bool, bool) {
-    var globallyDenied bool = false
-    var initialAllowValue bool = false
-
+func EvaluateGlobalRule(groups []string) AuthorizationRuleDecision {
     switch EVALUATE_RULE(settings.PackageAuthorizationConfig.Global, groups) {
-    case -1:
+    case Denied:
         logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages denied for user")
         // If we hit a global deny, there's no coming back from that. Skip all rule processing.
-        globallyDenied = true
-    case 0:
-        // If the global rule doesn't affect this user, we start all packages with the decision of the default rule
-        initialAllowValue = EVALUATE_RULE(settings.PackageAuthorizationConfig.Default, groups) == 1
-    case 1:
+        return Denied
+    case Unchanged:
+        return Unchanged
+    case Allowed:
         logging.Logger.Debug().Str("PackageIdentifier", "").Str("rule", "global").Msg("all packages allowed for user")
-        initialAllowValue = true
+        return Allowed
     }
 
-    return globallyDenied, initialAllowValue
+    logging.Logger.Error().Str("rule", "global").Msg("unexpected return value evaluating rule, this is a bug")
+    return Denied
 }
 
-func FilterAuthorizedPackage(decision *bool, packageIdentifier string, groups []string) {
+// This is the final decision maker, it will return either true if the package is to be allowed or false otherwise
+func FilterAuthorizedPackage(decision AuthorizationRuleDecision, packageIdentifier string, groups []string) bool {
+    var ruleMatched bool = decision != Unchanged
     for ruleIdx, rule := range settings.PackageAuthorizationConfig.Rules {
         if rule.PackageIdentifier == packageIdentifier && rule.PackageVersion == "" {
+            ruleMatched = true
             switch EVALUATE_RULE(rule.AuthorizationRuleset_1, groups) {
-            case -1:
+            case Denied:
                 logging.Logger.Debug().Str("PackageIdentifier", packageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package denied for user")
                 // On deny, mark the package as not allowed and stop processing it further
-                *decision = false
-                return
-            case 1:
+                return false
+            case Allowed:
                 logging.Logger.Debug().Str("PackageIdentifier", packageIdentifier).Str("rule", fmt.Sprint(ruleIdx)).Msg("package allowed for user")
-                *decision = true
+                decision = Allowed
             }
         }
     }
+
+    // If no rule has been hit and decision is Unchanged (not previously Allowed by Global), evaluate the default rule.
+    // If a rule has been hit but the decision is stil Unchanged (groups didnt match) we skip the default rule and return false
+    // because a per-package rules' Allow-List overrides the Default, so no match means package denied
+    return decision == Allowed || !ruleMatched && EVALUATE_RULE(settings.PackageAuthorizationConfig.Default, groups) == Allowed
 }
 
-/*
-// How to use the above 2 functions:
-
-allowedPackages := []models.API_Package{}
-globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
-
-if !globallyDenied {
-    for _, pkg := range models.Manifests.GetAllPackageIdentifiers() {
-        var packageAllowed bool = initialAllowValue
-        FilterAuthorizedPackage(&packageAllowed, pkg.PackageIdentifier, groups)
-        if packageAllowed {
-            allowedPackages = append(allowedPackages, pkg)
-        }
-    }
-}
-*/

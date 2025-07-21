@@ -21,13 +21,11 @@ func GetPackages(w http.ResponseWriter, r *http.Request) {
     }
 
     allowedPackages := []models.API_Package{}
-    globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
+    globalDecision := EvaluateGlobalRule(groups)
 
-    if !globallyDenied {
+    if globalDecision != Denied {
         for _, pkg := range models.Manifests.GetAllPackageIdentifiers() {
-            var packageAllowed bool = initialAllowValue
-            FilterAuthorizedPackage(&packageAllowed, pkg.PackageIdentifier, groups)
-            if packageAllowed {
+            if FilterAuthorizedPackage(globalDecision, pkg.PackageIdentifier, groups) {
                 allowedPackages = append(allowedPackages, pkg)
             }
         }
@@ -68,12 +66,10 @@ func (this *GetPackageHandler) GetPackage(w http.ResponseWriter, r *http.Request
   }
 
   var pkg []models.API_ManifestVersionInterface
-  globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
+  globalDecision := EvaluateGlobalRule(groups)
 
-  if !globallyDenied {
-      var packageAllowed bool = initialAllowValue
-      FilterAuthorizedPackage(&packageAllowed, r.PathValue("package_identifier"), groups)
-      if packageAllowed {
+  if globalDecision != Denied {
+      if FilterAuthorizedPackage(globalDecision, r.PathValue("package_identifier"), groups) {
           pkg = models.Manifests.GetAllVersions(r.PathValue("package_identifier"))
       }
   }
@@ -207,14 +203,14 @@ func SearchForPackage(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  globallyDenied, initialAllowValue := GetFilterInitialValue(groups)
+  globalDecision := EvaluateGlobalRule(groups)
 
   // results is a map where the PackageIdentifier is the key
   // and the values are arrays of manifests with that PackageIdentifier.
   // This means the values will be different versions of the package.
   var results map[string][]models.API_ManifestVersionInterface
 
-  if !globallyDenied {
+  if globalDecision != Denied {
     if post.Query.KeyWord != "" {
       logging.Logger.Debug().Msgf("someone searched the repo for: %v", post.Query.KeyWord)
       results = models.Manifests.GetByKeyword(post.Query.KeyWord)
@@ -226,9 +222,7 @@ func SearchForPackage(w http.ResponseWriter, r *http.Request) {
     logging.Logger.Debug().Msgf("with %v results", len(results))
 
     for packageId := range results {
-      var packageAllowed bool = initialAllowValue
-      FilterAuthorizedPackage(&packageAllowed, packageId, groups)
-      if !packageAllowed {
+      if ! FilterAuthorizedPackage(globalDecision, packageId, groups) {
         // It is safe to delete map elements during iteration
         delete(results, packageId)
       }

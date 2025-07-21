@@ -124,21 +124,23 @@ func main() {
         }
     }
 
-    //authConfig := models.GetInitialAuthorizationConfig_1()
+    // Load granular authorization rules from user-defined packageAuthorizationRulesFile
     if (*packageAuthorizationRulesPtr != "") {
         authConfigFile, err := os.Open(*packageAuthorizationRulesPtr)
         if err == nil {
             fileDecoder := yaml.NewDecoder(authConfigFile)
             err = fileDecoder.Decode(&settings.PackageAuthorizationConfig)
             if err != nil {
-                logging.Logger.Fatal().Err(err).Msgf("error unmarshaling packageAuthorizationRules file")
+                logging.Logger.Fatal().Err(err).Msg("error unmarshaling packageAuthorizationRules file")
+            }
+            if settings.PackageAuthorizationConfig.Version != 1 {
+                logging.Logger.Fatal().Msg("unknown version of packageAuthorizationRules file")
             }
         } else {
             logging.Logger.Fatal().Err(err).Msgf("error opening packageAuthorizationRules file")
         }
     }
     logging.Logger.Debug().Msgf("packageAuthorizationRules: %+v", settings.PackageAuthorizationConfig)
-    // TODO: actually enforce this ruleset
 
     logging.Logger.Debug().Msg("searching for manifests")
 

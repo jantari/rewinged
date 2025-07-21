@@ -11,7 +11,8 @@ import (
     "gopkg.in/yaml.v3"
 )
 
-// WiP: Reading per-package authorization settings from a user-defined YAML file
+// TODO: Validate the YAML schema of the packageAuthorizationRulesFile
+// before parsing it into this struct to fail on unknown fields.
 type AuthorizationConfig_1 struct {
     Version int `yaml:"Version"`
     Default AuthorizationRuleset_1 `yaml:"Default"`
@@ -23,6 +24,8 @@ type AuthorizationConfig_1 struct {
     } `yaml:"Rules"`
 }
 
+// This returns the "initial" AuthorizationConfig (V1) that will be used as-is
+// if no custom packageAuthorizationRulesFile was specified to override it.
 func GetInitialAuthorizationConfig_1() AuthorizationConfig_1 {
     newConfig := &AuthorizationConfig_1{}
     newConfig.Default.AllowAll = true
