@@ -35,6 +35,9 @@ func AuthMiddleware(next http.Handler, authType string) http.Handler {
     return nil
 }
 
+// Helpful linls:
+// https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference
+//
 func EntraIdAuthMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         rawAuthHeader := r.Header.Get("Authorization")
@@ -50,7 +53,8 @@ func EntraIdAuthMiddleware(next http.Handler) http.Handler {
         provider, err := oidc.NewProvider(ctxBg, settings.SourceAuthenticationEntraIDAuthorityURL)
         if err != nil {
             logging.Logger.Err(err).Msg("could not create OIDC provider")
-            http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized) // maybe this is more of a server-error but let's not tell the client this happened
+            // maybe this is more of a server-error but let's not tell the client this happened
+            http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
             return
         }
         verifier := provider.Verifier(&oidc.Config{
@@ -82,11 +86,22 @@ func EntraIdAuthMiddleware(next http.Handler) http.Handler {
         // Get groups for authorization
         var claims struct {
             Groups []string `json:"groups"`
+            // Group overage claim 1 (if present, user is a member of more groups than fit in the JWT)
+            HasGroups bool `json:"hasgroups"`
+            // Group overage claim 2 (if present, user is a member of more groups than fit in the JWT)
+            ClaimNames struct {
+                Groups string `json:"groups"`
+            } `json:"_claim_names"`
         }
         if err := parsedToken.Claims(&claims); err != nil {
             logging.Logger.Err(err).Msg("failed to parse JWT groups claim")
             http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
             return
+        }
+
+        // https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference#groups-overage-claim
+        if claims.HasGroups || claims.ClaimNames.Groups != "" {
+            logging.Logger.Warn().Msg("token contains groups overage claim")
         }
 
         r = r.WithContext(
