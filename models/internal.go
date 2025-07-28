@@ -11,8 +11,6 @@ import (
     "gopkg.in/yaml.v3"
 )
 
-// TODO: Validate the YAML schema of the packageAuthorizationRulesFile
-// before parsing it into this struct to fail on unknown fields.
 type AuthorizationConfig_1 struct {
     Version int `yaml:"Version"`
     Default AuthorizationRuleset_1 `yaml:"Default"`

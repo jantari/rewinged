@@ -8,6 +8,7 @@ import (
     "flag"
     "sync"
     "time"
+    _ "embed"
     "strings"
     "unicode"
     "net/http"
@@ -21,10 +22,14 @@ import (
     // for live-reload of manifests
     "github.com/rjeczalik/notify"
 
-    "rewinged/settings"
+    // for schema validation of settings file
+    // use v5 until https://github.com/santhosh-tekuri/jsonschema/discussions/172#discussioncomment-13904276 is answered
+    "github.com/santhosh-tekuri/jsonschema/v5"
+
+    "rewinged/controllers"
     "rewinged/logging"
     "rewinged/models"
-    "rewinged/controllers"
+    "rewinged/settings"
 )
 
 // These variables are overwritten at compile/link time using -ldflags
@@ -35,6 +40,9 @@ var releaseMode = "false"
 
 var wg sync.WaitGroup
 var jobs chan string = make(chan string)
+
+//go:embed authConfigSchema.json
+var authorizationRulesFileSchema string
 
 func main() {
     fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -128,13 +136,33 @@ func main() {
     if (*packageAuthorizationRulesPtr != "") {
         authConfigFile, err := os.Open(*packageAuthorizationRulesPtr)
         if err == nil {
+            // Read and decode packageAuthorizationRules file into a yaml.Node
+            var n yaml.Node
             fileDecoder := yaml.NewDecoder(authConfigFile)
-            err = fileDecoder.Decode(&settings.PackageAuthorizationConfig)
+            err = fileDecoder.Decode(&n)
             if err != nil {
                 logging.Logger.Fatal().Err(err).Msg("error unmarshaling packageAuthorizationRules file")
             }
-            if settings.PackageAuthorizationConfig.Version != 1 {
-                logging.Logger.Fatal().Msg("unknown version of packageAuthorizationRules file")
+
+            // Decode the yaml.Node once into a map[string]interface{} because that's what jsonschema requires
+            var m map[string]interface{}
+            err = n.Decode(&m)
+            if err != nil {
+                logging.Logger.Fatal().Err(err).Msg("error unmarshaling packageAuthorizationRules file")
+            }
+
+            schema, err := jsonschema.CompileString("authorizationRulesFileSchema.json", authorizationRulesFileSchema)
+            if err != nil {
+                logging.Logger.Fatal().Err(err).Msg("error compiling embedded schema, this is a bug")
+            }
+            if err := schema.Validate(m); err != nil {
+                logging.Logger.Fatal().Err(err).Msg("error validating packageAuthorizationRules file")
+            }
+
+            // If the schema validation was successful, decode the yaml.Node again, this time into our struct
+            err = n.Decode(&settings.PackageAuthorizationConfig)
+            if err != nil {
+                logging.Logger.Fatal().Err(err).Msg("error unmarshaling packageAuthorizationRules file")
             }
         } else {
             logging.Logger.Fatal().Err(err).Msgf("error opening packageAuthorizationRules file")

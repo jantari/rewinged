@@ -1,0 +1,38 @@
+---
+
+# Currently there is only "Version: 1" of this config file, and it only supports EntraID
+# authorization rules because that is currently the only kind of auth winget and rewinged support.
+
+# The "Allow" and "Deny" fields can either be lists of EntraID group IDs (GUIDs)
+# or the special value '*' which means all/everyone.
+
+Version: 1
+# The Global rule can be used to easily allow or deny access to ALL
+# packages in the repository. If a user does not match the Global rule
+# (is in none of the groups) then it simply has no effect on their access.
+Global:
+  Allow: []
+  Deny: []
+# The Rules list is where you specify Allow and Deny lists per package
+# (PackageIdentifier). There is no wildcard matching for the PackageIdentifier
+# and it is also case-sensitive, so it has to match the package manifest exactly.
+Rules:
+  - PackageIdentifier: Git.Git
+    Allow: [e66c51dc-f2bd-44cc-b4eb-9b0f1d9c1409]
+  - PackageIdentifier: rewinged.bottom
+    Allow: []
+# The Default rule is ONLY applied when there are NO explicit rules
+# configured for a package AND the user is not in the Global Allow or Deny
+# lists. When a global Allow/Deny, or an explicit rule for a particular
+# package were matched the default rule is entirely replaced/disregarded.
+Default:
+  Allow: '*'
+  Deny:
+    - df99af2b-c9ce-4e2b-b642-3fd734933a0c
+
+# Also:
+# If a user is neither Allowed nor Denied access to a package after evaluating all
+# applicable rules, they will not be able to access it (not allowed -> denied).
+#
+# If a user is both Allowed and Denied access to a package,
+# Deny takes precedence and they will not be able to access it.
