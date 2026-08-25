@@ -42,11 +42,15 @@ stages:
           # Swap for `name: <your-pool>` to run on a self-hosted agent.
           vmImage: ubuntu-latest
         steps:
-          # The toolchain comes from the golang image rather than GoTool@0,
-          # which downloads a tarball from storage.googleapis.com - an egress an
-          # on-premises agent does not necessarily have, and the failure it
-          # reports ("Failed to download version ...") reads like a bad version
-          # string rather than a blocked host.
+          # The toolchain comes from the golang image rather than GoTool@0. That
+          # task fetches its tarball from the storage.googleapis.com/golang
+          # bucket, which denies anonymous reads - every version answers 403
+          # AccessDenied - so it cannot install any Go at all, on hosted and
+          # self-hosted agents alike. Go itself is still published, at
+          # dl.google.com/go; only the bucket the task uses is closed.
+          #
+          # The error names the version ("Failed to download version 1.25.9"),
+          # which reads like a bad input rather than a dead source.
           #
           # This also keeps one toolchain in the pipeline: the tag here and the
           # builder stage in Dockerfile must match, so tests cannot pass on a
