@@ -19,7 +19,7 @@ pr:
 variables:
   # Repository path within that registry, e.g. 'infrastructure/rewinged'.
   - name: imageId
-    value: 'rewinged'
+    value: 'pacstar-devops/rewinged'
   - name: imageRepositoryUri
     value: 'pscproget01.int.cw.local/pscdev-containers-sandbox/'
   - group: 'ProGet - PSCDEV-Containers-Sandbox'
@@ -116,14 +116,19 @@ stages:
               # all, and a step that handles only one of those disagrees with
               # the steps that handle both - which is how a build tagged
               # 'rewinged:...' while the smoke test looked for something else.
-              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
-              case "${IMAGE_REPOSITORY}" in ''|'$'*) IMAGE_REPOSITORY=rewinged ;; esac
+              IMAGE_ID="${IMAGE_ID:-}"
+              case "${IMAGE_ID}" in 
+                ''|'$'*)
+                echo "'imageId' did not resolve (got '${IMAGE_ID}')."
+                exit 1
+                ;;
+              esac
               IMAGE_VERSION="${IMAGE_VERSION:-}"
               IMAGE_COMMIT="${IMAGE_COMMIT:-unknown}"
               IMAGE_COMPILE_TIME="${IMAGE_COMPILE_TIME:-unknown}"
               SOURCE_VERSION="${SOURCE_VERSION:-unknown}"
 
-              echo "imageRepository resolved to '${IMAGE_REPOSITORY}'."
+              echo "'imageId' resolved to '${IMAGE_ID}'."
 
               # The version has no sensible default. It comes from the previous
               # step, and guessing one would tag an image with a version it does
@@ -137,7 +142,7 @@ stages:
                   ;;
               esac
 
-              echo "building ${IMAGE_REPOSITORY}:${IMAGE_VERSION}"
+              echo "building ${IMAGE_ID}:${IMAGE_VERSION}"
 
               docker build \
                 --build-arg "VERSION=${IMAGE_VERSION}" \
@@ -149,13 +154,14 @@ stages:
                 --label "org.opencontainers.image.title=rewinged" \
                 --label "org.opencontainers.image.description=rewinged is a self-hosted winget package source" \
                 --label "org.opencontainers.image.licenses=MIT" \
-                --tag "${IMAGE_REPOSITORY}:${IMAGE_VERSION}" \
-                --tag "${IMAGE_REPOSITORY}:latest" \
+                --tag "${IMAGE_ID}:${IMAGE_VERSION}" \
+                --tag "${IMAGE_ID}:latest" \
                 .
             displayName: Build the image
             env:
-              IMAGE_REPOSITORY: $(imageRepository)
+              IMAGE_ID: $(imageId)
               IMAGE_VERSION: $(imageVersion)
+              IMAGE_REPOSITORY_URI: $(imageRepositoryUri)
               IMAGE_COMMIT: $(imageCommit)
               IMAGE_COMPILE_TIME: $(imageCompileTime)
               SOURCE_VERSION: $(Build.SourceVersion)
@@ -168,28 +174,41 @@ stages:
               # all, and a step that handles only one of those disagrees with
               # the steps that handle both - which is how a build tagged
               # 'rewinged:...' while the smoke test looked for something else.
-              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
-              case "${IMAGE_REPOSITORY}" in ''|'$'*) IMAGE_REPOSITORY=rewinged ;; esac
-
-              # The version is not defaulted here. The build step exits non-zero
-              # on an unresolved one, and it runs first, so reaching this step
-              # means it resolved.
-              IMAGE_VERSION="${IMAGE_VERSION:-}"
+              IMAGE_REPOSITORY_URI="${IMAGE_REPOSITORY_URI:-}"
+              case "${IMAGE_REPOSITORY_URI}" in
+                ''|'$'*)
+                echo "'imageRepositoryUri' did not resolve (got '${IMAGE_REPOSITORY_URI}')."
+                exit 1
+                ;;
+              esac
+              case "${IMAGE_ID}" in 
+                ''|'$'*)
+                echo "'imageId' did not resolve (got '${IMAGE_ID}')."
+                exit 1
+                ;;
+              esac
+              case "${IMAGE_VERSION}" in 
+                ''|'$'*)
+                echo "'imageVersion' did not resolve (got '${IMAGE_VERSION}')."
+                exit 1
+                ;;
+              esac
 
               # The image must report the version it was stamped with. A binary
               # that answers "development-build" here was built without the
               # build args, which is invisible until someone tries to pin it.
-              reported="$(docker run --rm "${IMAGE_REPOSITORY}:${IMAGE_VERSION}" -version | head -n1)"
-              echo "reported: ${reported}"
+              reported="$(docker run --rm "${IMAGE_ID}:${IMAGE_VERSION}" -version | head -n1)"
+              echo "Built image version reported from `docker run`: ${reported}"
 
               case "${reported}" in
                 *"${IMAGE_VERSION}"*) ;;
-                *) echo "expected the image to report ${IMAGE_VERSION}"; exit 1 ;;
+                *) echo "Expected the image run to report '${IMAGE_VERSION}' but received '${reported}'."; exit 1 ;;
               esac
             displayName: Smoke-test the image
             env:
-              IMAGE_REPOSITORY: $(imageRepository)
+              IMAGE_ID: $(imageId)
               IMAGE_VERSION: $(imageVersion)
+              IMAGE_REPOSITORY_URI: $(imageRepositoryUri)
 
           - script: |
               set -euo pipefail
@@ -203,8 +222,24 @@ stages:
               # the steps that handle both - which is how a build tagged
               # 'rewinged:...' while the smoke test looked for something else.
               IMAGE_REPOSITORY_URI="${IMAGE_REPOSITORY_URI:-}"
-              case "${IMAGE_REPOSITORY_URI}" in ''|'$'*) IMAGE_REPOSITORY_URI=rewinged ;; esac
-              IMAGE_VERSION="${IMAGE_VERSION:-}"
+              case "${IMAGE_REPOSITORY_URI}" in 
+                ''|'$'*)
+                echo "'imageRepositoryUri' did not resolve (got '${IMAGE_REPOSITORY_URI}')."
+                exit 1
+                ;;
+              esac
+              case "${IMAGE_ID}" in 
+                ''|'$'*)
+                echo "'imageId' did not resolve (got '${IMAGE_ID}')."
+                exit 1
+                ;;
+              esac
+              case "${IMAGE_VERSION}" in 
+                ''|'$'*)
+                echo "'imageVersion' did not resolve (got '${IMAGE_VERSION}')."
+                exit 1
+                ;;
+              esac
 
               docker push "${IMAGE_REPOSITORY_URI}${IMAGE_ID}:${IMAGE_VERSION}"
               docker push "${IMAGE_REPOSITORY_URI}${IMAGE_ID}:latest"
