@@ -18,8 +18,9 @@ pr:
 
 variables:
   # Repository path within that registry, e.g. 'infrastructure/rewinged'.
-  repository: 'pscdev-containers-sandbox/rewinged'
-  group: 'ProGet - PSCDEV-Containers-Sandbox'
+  - name: repository
+    value: 'pscdev-containers-sandbox/rewinged'
+  - group: 'ProGet - PSCDEV-Containers-Sandbox'
 
 stages:
   - stage: Test
@@ -77,10 +78,6 @@ stages:
     displayName: Container image
     dependsOn: Test
     condition: succeeded()
-    variables:
-      # Repository path within that registry, e.g. 'infrastructure/rewinged'.
-      repository: 'pscdev-containers-sandbox/rewinged'
-      group: 'ProGet - PSCDEV-Containers-Sandbox'
     jobs:
       - job: image
         displayName: Build, smoke-test and push
@@ -198,7 +195,7 @@ stages:
               echo "$API_KEY" | docker login --password-stdin --username "$API_USERNAME" pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
             env:
-              API_KEY: $(group)
+              API_KEY: $(api-key)
               API_USERNAME: $(api-username)
 
           - script: |
