@@ -58,11 +58,24 @@ stages:
           # compiler the image is not built with. The tag has to satisfy the
           # `go` directive in go.mod, which the golang images will not silently
           # substitute.
+          #
+          # GOFLAGS disables VCS stamping. Go records the commit in binaries it
+          # builds, which means shelling out to git, and git refuses a
+          # repository owned by someone other than the calling user: the
+          # workspace belongs to the agent account and this container runs as
+          # root, so git exits 128 and takes the build with it. The stage
+          # compiles to find compile errors and keeps no binary, so there is
+          # nothing here for a commit stamp to end up in.
+          #
+          # The image build is not affected. COPY makes the sources root-owned
+          # inside the image and the compiler runs as root, so the owners match
+          # and stamping works - which is why Dockerfile does not set this.
           - script: |
               set -euo pipefail
               docker run --rm \
                 -v "$(Build.SourcesDirectory)":/src \
                 -w /src \
+                -e GOFLAGS=-buildvcs=false \
                 golang:1.25 \
                 sh -c 'go version && go build ./... && go vet ./... && go test ./...'
             displayName: Build, vet and test
