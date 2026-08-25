@@ -1,0 +1,142 @@
+# Builds the rewinged container image on Azure DevOps.
+#
+# The image is built on every pull request so a change that breaks the build is
+# caught before it lands, and pushed only from the default branch - a pull
+# request from a fork must never be able to publish to an internal registry.
+#
+# Set `containerRegistry` below to the name of a Docker Registry service
+# connection before the push steps will do anything. Left empty, the pipeline
+# still builds and smoke-tests the image and skips the push, which is a useful
+# state to run in while the registry is being decided.
+
+trigger:
+  branches:
+    include:
+      - main
+  tags:
+    include:
+      - '*'
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  # Name of the Docker Registry service connection in project settings.
+  # Empty means "build but do not push".
+  containerRegistry: ''
+  # Repository path within that registry, e.g. 'infrastructure/rewinged'.
+  imageRepository: 'rewinged'
+  # Push only from the default branch. Tag builds also match, because a tag
+  # build's SourceBranch is refs/tags/... rather than a branch.
+  isPublishable: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))]
+
+stages:
+  - stage: Test
+    displayName: Test
+    jobs:
+      - job: gotest
+        displayName: go build, vet and test
+        pool:
+          # Swap for `name: <your-pool>` to run on a self-hosted agent.
+          vmImage: ubuntu-latest
+        steps:
+          - task: GoTool@0
+            displayName: Install the Go toolchain
+            inputs:
+              # Must satisfy the `go` directive in go.mod. The golang toolchain
+              # will not silently substitute an older one.
+              version: '1.25.9'
+
+          - script: go build ./...
+            displayName: Build
+
+          - script: go vet ./...
+            displayName: Vet
+
+          - script: go test ./...
+            displayName: Test
+
+  - stage: Image
+    displayName: Container image
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - job: image
+        displayName: Build, smoke-test and push
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+            # git describe needs history and tags; the default shallow fetch
+            # would leave every build reporting the same version.
+            fetchDepth: 0
+            fetchTags: true
+
+          - script: |
+              set -euo pipefail
+
+              # A tag build is named by its tag. Anything else is named by the
+              # last tag plus the distance and commit, so an image built from
+              # main is never mistaken for a release.
+              VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo 'development-build')"
+              COMMIT="$(git rev-parse --short HEAD)"
+              COMPILE_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+              echo "version=${VERSION} commit=${COMMIT} compiled=${COMPILE_TIME}"
+              echo "##vso[task.setvariable variable=imageVersion]${VERSION}"
+              echo "##vso[task.setvariable variable=imageCommit]${COMMIT}"
+              echo "##vso[task.setvariable variable=imageCompileTime]${COMPILE_TIME}"
+              echo "##vso[build.updatebuildnumber]${VERSION}"
+            displayName: Derive the version from git
+
+          - script: |
+              set -euo pipefail
+              docker build \
+                --build-arg "VERSION=$(imageVersion)" \
+                --build-arg "COMMIT=$(imageCommit)" \
+                --build-arg "COMPILE_TIME=$(imageCompileTime)" \
+                --label "org.opencontainers.image.created=$(imageCompileTime)" \
+                --label "org.opencontainers.image.version=$(imageVersion)" \
+                --label "org.opencontainers.image.revision=$(Build.SourceVersion)" \
+                --label "org.opencontainers.image.title=rewinged" \
+                --label "org.opencontainers.image.description=rewinged is a self-hosted winget package source" \
+                --label "org.opencontainers.image.licenses=MIT" \
+                --tag "$(imageRepository):$(imageVersion)" \
+                --tag "$(imageRepository):latest" \
+                .
+            displayName: Build the image
+
+          - script: |
+              set -euo pipefail
+
+              # The image must report the version it was stamped with. A binary
+              # that answers "development-build" here was built without the
+              # build args, which is invisible until someone tries to pin it.
+              reported="$(docker run --rm "$(imageRepository):$(imageVersion)" -version | head -n1)"
+              echo "reported: ${reported}"
+
+              case "${reported}" in
+                *"$(imageVersion)"*) ;;
+                *) echo "expected the image to report $(imageVersion)"; exit 1 ;;
+              esac
+            displayName: Smoke-test the image
+
+          - task: Docker@2
+            displayName: Sign in to the registry
+            condition: and(succeeded(), ne(variables['containerRegistry'], ''), eq(variables.isPublishable, true))
+            inputs:
+              command: login
+              containerRegistry: $(containerRegistry)
+
+          - script: |
+              set -euo pipefail
+              docker push "$(imageRepository):$(imageVersion)"
+              docker push "$(imageRepository):latest"
+            displayName: Push the image
+            condition: and(succeeded(), ne(variables['containerRegistry'], ''), eq(variables.isPublishable, true))
+
+          - script: echo "containerRegistry is unset or this is not a publishable ref - built and tested only."
+            displayName: Report that the push was skipped
+            condition: and(succeeded(), or(eq(variables['containerRegistry'], ''), ne(variables.isPublishable, true)))
