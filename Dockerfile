@@ -3,7 +3,7 @@
 # Builder image to compile the binary. The tag has to satisfy the `go` directive
 # in go.mod: the golang images set GOTOOLCHAIN=local, so an older builder fails
 # outright rather than fetching the toolchain go.mod asks for.
-FROM golang:1.25 AS builder
+FROM golang:1.29 AS builder
 
 # Version metadata the binary reports through `-version`. Left at the defaults
 # main.go declares when unset, so a plain `docker build .` still works.
@@ -21,20 +21,17 @@ RUN go build -o /tmp/rewinged -ldflags "-s -w \
       -X 'main.releaseMode=true'"
 
 
-
-FROM alpine:latest AS certs
-
-RUN apk add --no-cache ca-certificates
-
-
-
 FROM scratch
 
 COPY <<EOF /etc/passwd
 rewinged:x:10002:10002:rewinged:/:/rewinged
 EOF
 
-COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# The root store comes from the builder, which is Debian-based and already
+# carries a full ca-certificates bundle. Fetching one into a separate alpine
+# stage instead would put a package mirror on the critical path of every build,
+# for a file that is already present.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 USER rewinged
 
