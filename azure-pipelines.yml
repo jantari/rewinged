@@ -19,10 +19,10 @@ pr:
 variables:
   # Repository path within that registry, e.g. 'infrastructure/rewinged'.
   - name: imageId
-    value: 'pacstar-devops/rewinged'
+    value: 'devops/rewinged'
   - name: imageRepositoryUri
-    value: 'pscproget01.int.cw.local/pscdev-containers-sandbox/'
-  - group: 'ProGet - PSCDEV-Containers-Sandbox'
+    value: 'office.local/containers-sandbox/'
+  - group: 'Containers-Sandbox'
 
 stages:
   - stage: Test
