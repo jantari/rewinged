@@ -191,7 +191,6 @@ stages:
           - script: |
               docker login --password pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
-            condition: and(succeeded(), ne(variables['api-key'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
 
           - script: |
               set -euo pipefail
@@ -211,8 +210,6 @@ stages:
             env:
               IMAGE_REPOSITORY: $(imageRepository)
               IMAGE_VERSION: $(imageVersion)
-            condition: and(succeeded(), ne(variables['api-key'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
 
           - script: echo "api-key is unset or this is not a publishable ref - built and tested only."
             displayName: Report that the push was skipped
-            condition: and(succeeded(), or(eq(variables['api-key'], ''), not(or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))))
