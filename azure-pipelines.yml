@@ -34,13 +34,10 @@ variables:
 stages:
   - stage: Test
     displayName: Test
-    pool: Lab_Linux
     jobs:
       - job: gotest
         displayName: go build, vet and test
-        pool:
-          # Swap for `name: <your-pool>` to run on a self-hosted agent.
-          vmImage: ubuntu-latest
+        pool: Lab_Linux
         steps:
           - task: GoTool@0
             displayName: Install the Go toolchain
@@ -62,12 +59,10 @@ stages:
     displayName: Container image
     dependsOn: Test
     condition: succeeded()
-    pool: Lab_Linux
     jobs:
       - job: image
         displayName: Build, smoke-test and push
-        pool:
-          vmImage: ubuntu-latest
+        pool: Lab_Linux
         steps:
           - checkout: self
             # git describe needs history and tags; the default shallow fetch
