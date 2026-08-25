@@ -3,6 +3,7 @@ package main
 import (
   "os"
   "errors"
+  "fmt"
   "slices"
   "strings"
   "io"
@@ -156,39 +157,10 @@ func internalizeInstallers(
     }
 
     var destFile string = filepath.Join(autoInternalizePath, strings.ToLower(installer.GetInstallerSha()))
-    // Why os.OpenFile instead of os.Create:
-    // https://stackoverflow.com/a/22483001
-    out, err := os.OpenFile(destFile, os.O_RDWR | os.O_CREATE | os.O_EXCL, 0666)
-    if err != nil {
-      if errors.Is(err, fs.ErrExist) {
-        logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("file already exists, not redownloading %s", destFile)
-      } else {
-        logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot create file %s", destFile)
-        continue
-      }
-    } else {
-      defer out.Close()
-      // No error, we could open the file for writing and it does not exist yet - so download it
-      logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("downloading installer")
-
-      resp, err := http.Get(originalInstallerURL)
-      if err != nil {
-        logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot download file %s", originalInstallerURL)
-        continue
-      }
-      defer resp.Body.Close()
-      if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-        logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot download file %s (http status %d)", originalInstallerURL, resp.StatusCode)
-        continue
-      }
-
-      n, err := io.Copy(out, resp.Body)
-      if err != nil {
-        logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot save to file %s", destFile)
-        continue
-      } else {
-        logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("downloaded installer, %d bytes written", n)
-      }
+    if err := cacheInstaller(destFile, originalInstallerURL, packageIdentifier, packageVersion); err != nil {
+      // cacheInstaller has logged what went wrong and left nothing behind, so
+      // the next run will try this installer again.
+      continue
     }
 
     logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("prepared internalization")
@@ -196,6 +168,95 @@ func internalizeInstallers(
     // so we know we can rewrite its InstallerUrl later.
     models.InternalizedInstallers.Set(installer.GetInstallerSha(), true)
   }
+}
+
+// cacheInstaller makes sure destFile holds the installer served at url,
+// downloading it if it is not there already.
+//
+// The download goes to a temporary name in the same directory and is renamed
+// into place only once the whole body has been written, so destFile only ever
+// exists complete. Writing it directly would publish a partial file under the
+// name the manifest points clients at: rewinged rewrites the InstallerUrl to
+// whatever is in this directory, so an unfinished download is served on a 200
+// to anyone who asks, and - because the name is the only thing checked on the
+// next start - is never retried.
+//
+// It returns an error, already logged, having left nothing behind.
+func cacheInstaller(destFile string, url string, packageIdentifier string, packageVersion string) error {
+  if _, err := os.Stat(destFile); err == nil {
+    logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("file already exists, not redownloading %s", destFile)
+    return nil
+  } else if !errors.Is(err, fs.ErrNotExist) {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot stat file %s", destFile)
+    return err
+  }
+
+  // Staging in the destination directory rather than the system temp dir keeps
+  // the rename on one filesystem, where it is atomic.
+  //
+  // Two workers reaching the same installer at once will each download it and
+  // each rename their own copy into place. That is wasted bandwidth rather than
+  // a corrupt file, because the rename replaces the destination in one step.
+  tmp, err := os.CreateTemp(filepath.Dir(destFile), ".download-*")
+  if err != nil {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot create a temporary file next to %s", destFile)
+    return err
+  }
+  tmpName := tmp.Name()
+
+  // CreateTemp makes the file 0600 and Rename carries that mode across, which
+  // would quietly tighten every cached installer: these were previously created
+  // with 0666 before umask, and anything else reading this directory - a backup,
+  // a sync, an operator - has been relying on that.
+  if err = tmp.Chmod(0644); err != nil {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot set permissions on the temporary file for %s", destFile)
+    tmp.Close()
+    os.Remove(tmpName)
+    return err
+  }
+
+  defer func() {
+    // Both are no-ops on the path where the download succeeded: the handle is
+    // already closed and the file has been renamed away.
+    tmp.Close()
+    os.Remove(tmpName)
+  }()
+
+  logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("downloading installer")
+
+  resp, err := http.Get(url)
+  if err != nil {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot download file %s", url)
+    return err
+  }
+  defer resp.Body.Close()
+
+  if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+    err = fmt.Errorf("http status %d", resp.StatusCode)
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot download file %s (http status %d)", url, resp.StatusCode)
+    return err
+  }
+
+  n, err := io.Copy(tmp, resp.Body)
+  if err != nil {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot save to file %s", destFile)
+    return err
+  }
+
+  // Close before renaming so the bytes are handed to the filesystem while there
+  // is still somewhere to report a failure.
+  if err = tmp.Close(); err != nil {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot finish writing %s", destFile)
+    return err
+  }
+
+  if err = os.Rename(tmpName, destFile); err != nil {
+    logging.Logger.Error().Err(err).Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("cannot move the downloaded file into place at %s", destFile)
+    return err
+  }
+
+  logging.Logger.Debug().Str("package", packageIdentifier).Str("packageversion", packageVersion).Msgf("downloaded installer, %d bytes written", n)
+  return nil
 }
 
 // Finds and parses all package manifest files in a directory
