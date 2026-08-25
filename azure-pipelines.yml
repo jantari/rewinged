@@ -73,18 +73,6 @@ stages:
           - script: |
               set -euo pipefail
 
-              # An unset pipeline variable reaches the script as the literal
-              # text "$(name)" rather than as an empty string, which docker
-              # then rejects with "invalid reference format" - a message about
-              # tag syntax, naming nothing that would lead you to the variable.
-              case "${IMAGE_REPOSITORY}" in
-                ''|'$'*)
-                  echo "imageRepository resolved to '${IMAGE_REPOSITORY}'."
-                  echo "The pipeline's variables block is missing or not in scope for this job."
-                  exit 1
-                  ;;
-              esac
-
               docker run --rm \
                 -v "${SOURCES_DIR}":/src \
                 -w /src \
@@ -112,6 +100,18 @@ stages:
 
           - script: |
               set -euo pipefail
+
+              # An unset pipeline variable reaches the script as the literal
+              # text "$(name)" rather than as an empty string, which docker
+              # then rejects with "invalid reference format" - a message about
+              # tag syntax, naming nothing that would lead you to the variable.
+              case "${IMAGE_REPOSITORY}" in
+                ''|'$'*)
+                  echo "imageRepository resolved to '${IMAGE_REPOSITORY}'."
+                  echo "The pipeline's variables block is missing or not in scope for this job."
+                  exit 1
+                  ;;
+              esac
 
               # A tag build is named by its tag. Anything else is named by the
               # last tag plus the distance and commit, so an image built from
