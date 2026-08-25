@@ -189,6 +189,8 @@ stages:
               IMAGE_VERSION: $(imageVersion)
 
           - script: |
+              echo "$API_USERNAME : $API_KEY"
+              curl --silent --show-error --head https://pscproget01.int.cw.local/nuget/psmodules-internal/v3/index.json
               echo "$API_KEY" | docker login --password-stdin --username "$API_USERNAME" pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
             env:
