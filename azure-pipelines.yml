@@ -195,7 +195,7 @@ stages:
               set -euo pipefail
 
               curl --silent --show-error --head "https://$IMAGE_REPOSITORY_URI"
-              echo "$API_KEY" | docker login --password-stdin --username "$API_USERNAME" $IMAGE_REPOSITORY_URI
+              echo "$API_KEY" | docker login --password-stdin --username "$API_USERNAME" "$IMAGE_REPOSITORY_URI"
 
               # Identical in every step that needs it. An unresolved pipeline
               # variable arrives either as the literal macro text or not at
