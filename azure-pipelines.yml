@@ -31,11 +31,10 @@ variables:
   # build's SourceBranch is refs/tags/... rather than a branch.
   isPublishable: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))]
 
-pool: Lab_Linux
-
 stages:
   - stage: Test
     displayName: Test
+    pool: Lab_Linux
     jobs:
       - job: gotest
         displayName: go build, vet and test
@@ -63,6 +62,7 @@ stages:
     displayName: Container image
     dependsOn: Test
     condition: succeeded()
+    pool: Lab_Linux
     jobs:
       - job: image
         displayName: Build, smoke-test and push
