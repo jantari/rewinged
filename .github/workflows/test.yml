@@ -1,13 +1,17 @@
 name: Test
 
-# Unlike build.yml, which releases on a tag, this runs on every push and pull
-# request - a test that only runs at release time reports a regression after
-# the commit that caused it has already shipped.
+# Unlike build.yml, which releases on a tag, this gates every change before it
+# lands - a test that only runs at release time reports a regression after the
+# commit that caused it has already shipped.
+#
+# push covers the default branch and pull_request covers everything on its way
+# there. Listing every branch under push instead would run this twice for any
+# branch that has a pull request open.
 on:
   workflow_dispatch:
   push:
     branches:
-      - '**'
+      - main
   pull_request:
 
 permissions:
