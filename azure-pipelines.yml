@@ -18,8 +18,8 @@ pr:
 
 variables:
   # Repository path within that registry, e.g. 'infrastructure/rewinged'.
-  - name: imageRepository
-    value: 'pscdev-containers-sandbox/rewinged'
+  - name: imageId
+    value: 'rewinged'
   - name: imageRepositoryUri
     value: 'pscproget01.int.cw.local/pscdev-containers-sandbox/'
   - group: 'ProGet - PSCDEV-Containers-Sandbox'
@@ -202,15 +202,15 @@ stages:
               # all, and a step that handles only one of those disagrees with
               # the steps that handle both - which is how a build tagged
               # 'rewinged:...' while the smoke test looked for something else.
-              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
-              case "${IMAGE_REPOSITORY}" in ''|'$'*) IMAGE_REPOSITORY=rewinged ;; esac
+              IMAGE_REPOSITORY_URI="${IMAGE_REPOSITORY_URI:-}"
+              case "${IMAGE_REPOSITORY_URI}" in ''|'$'*) IMAGE_REPOSITORY_URI=rewinged ;; esac
               IMAGE_VERSION="${IMAGE_VERSION:-}"
 
-              docker push "${IMAGE_REPOSITORY}:${IMAGE_VERSION}"
-              docker push "${IMAGE_REPOSITORY}:latest"
+              docker push "${IMAGE_REPOSITORY_URI}${IMAGE_ID}:${IMAGE_VERSION}"
+              docker push "${IMAGE_REPOSITORY_URI}${IMAGE_ID}:latest"
             displayName: Push the image
             env:
-              IMAGE_REPOSITORY: $(imageRepository)
+              IMAGE_ID: $(imageId)
               IMAGE_VERSION: $(imageVersion)
               IMAGE_REPOSITORY_URI: $(imageRepositoryUri)
               API_KEY: $(api-key)
