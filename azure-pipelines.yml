@@ -42,21 +42,25 @@ stages:
           # Swap for `name: <your-pool>` to run on a self-hosted agent.
           vmImage: ubuntu-latest
         steps:
-          - task: GoTool@0
-            displayName: Install the Go toolchain
-            inputs:
-              # Must satisfy the `go` directive in go.mod. The golang toolchain
-              # will not silently substitute an older one.
-              version: '1.25.9'
-
-          - script: go build ./...
-            displayName: Build
-
-          - script: go vet ./...
-            displayName: Vet
-
-          - script: go test ./...
-            displayName: Test
+          # The toolchain comes from the golang image rather than GoTool@0,
+          # which downloads a tarball from storage.googleapis.com - an egress an
+          # on-premises agent does not necessarily have, and the failure it
+          # reports ("Failed to download version ...") reads like a bad version
+          # string rather than a blocked host.
+          #
+          # This also keeps one toolchain in the pipeline: the tag here and the
+          # builder stage in Dockerfile must match, so tests cannot pass on a
+          # compiler the image is not built with. The tag has to satisfy the
+          # `go` directive in go.mod, which the golang images will not silently
+          # substitute.
+          - script: |
+              set -euo pipefail
+              docker run --rm \
+                -v "$(Build.SourcesDirectory)":/src \
+                -w /src \
+                golang:1.25 \
+                sh -c 'go version && go build ./... && go vet ./... && go test ./...'
+            displayName: Build, vet and test
 
   - stage: Image
     displayName: Container image
