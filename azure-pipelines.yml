@@ -8,9 +8,6 @@
 # connection before the push steps will do anything. Left empty, the pipeline
 # still builds and smoke-tests the image and skips the push, which is a useful
 # state to run in while the registry is being decided.
-pool:
-  name: Lab_Linux
-
 trigger:
   branches:
     include:
@@ -33,6 +30,9 @@ variables:
   # Push only from the default branch. Tag builds also match, because a tag
   # build's SourceBranch is refs/tags/... rather than a branch.
   isPublishable: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))]
+
+pool:
+  name: Lab_Linux
 
 stages:
   - stage: Test
