@@ -115,26 +115,19 @@ stages:
           - script: |
               set -euo pipefail
 
-              # A pipeline variable the agent cannot resolve arrives one of two
-              # ways: as the literal text of the macro, or not at all. Every
-              # read below therefore carries a default, because the second case
-              # otherwise trips `set -u` and reports the shell variable rather
-              # than the pipeline one that is actually missing.
+              # Identical in every step that needs it. An unresolved pipeline
+              # variable arrives either as the literal macro text or not at
+              # all, and a step that handles only one of those disagrees with
+              # the steps that handle both - which is how a build tagged
+              # 'rewinged:...' while the smoke test looked for something else.
               IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
+              case "${IMAGE_REPOSITORY}" in ''|'$'*) IMAGE_REPOSITORY=rewinged ;; esac
               IMAGE_VERSION="${IMAGE_VERSION:-}"
               IMAGE_COMMIT="${IMAGE_COMMIT:-unknown}"
               IMAGE_COMPILE_TIME="${IMAGE_COMPILE_TIME:-unknown}"
               SOURCE_VERSION="${SOURCE_VERSION:-unknown}"
 
-              # The repository name has a working default, so an unresolved
-              # variable is a lost override rather than a failed build. The
-              # variables block is the way to point this somewhere else.
-              case "${IMAGE_REPOSITORY}" in
-                ''|'$'*)
-                  echo "imageRepository did not resolve; falling back to 'rewinged'."
-                  IMAGE_REPOSITORY=rewinged
-                  ;;
-              esac
+              echo "imageRepository resolved to '${IMAGE_REPOSITORY}'."
 
               # The version has no sensible default. It comes from the previous
               # step, and guessing one would tag an image with a version it does
@@ -174,7 +167,17 @@ stages:
           - script: |
               set -euo pipefail
 
-              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-rewinged}"
+              # Identical in every step that needs it. An unresolved pipeline
+              # variable arrives either as the literal macro text or not at
+              # all, and a step that handles only one of those disagrees with
+              # the steps that handle both - which is how a build tagged
+              # 'rewinged:...' while the smoke test looked for something else.
+              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
+              case "${IMAGE_REPOSITORY}" in ''|'$'*) IMAGE_REPOSITORY=rewinged ;; esac
+
+              # The version is not defaulted here. The build step exits non-zero
+              # on an unresolved one, and it runs first, so reaching this step
+              # means it resolved.
               IMAGE_VERSION="${IMAGE_VERSION:-}"
 
               # The image must report the version it was stamped with. A binary
@@ -201,8 +204,16 @@ stages:
 
           - script: |
               set -euo pipefail
-              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-rewinged}"
+
+              # Identical in every step that needs it. An unresolved pipeline
+              # variable arrives either as the literal macro text or not at
+              # all, and a step that handles only one of those disagrees with
+              # the steps that handle both - which is how a build tagged
+              # 'rewinged:...' while the smoke test looked for something else.
+              IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-}"
+              case "${IMAGE_REPOSITORY}" in ''|'$'*) IMAGE_REPOSITORY=rewinged ;; esac
               IMAGE_VERSION="${IMAGE_VERSION:-}"
+
               docker push "${IMAGE_REPOSITORY}:${IMAGE_VERSION}"
               docker push "${IMAGE_REPOSITORY}:latest"
             displayName: Push the image
