@@ -42,21 +42,30 @@ stages:
           - script: |
               curl -sI https://storage.googleapis.com/golang/go1.25.9.linux-amd64.tar.gz | head -1
               curl -sI https://proxy.golang.org/gopkg.in/yaml.v3/@v/list | head -1
-          - task: GoTool@0
-            displayName: Install the Go toolchain
-            inputs:
-              # Must satisfy the `go` directive in go.mod. The golang toolchain
-              # will not silently substitute an older one.
-              version: '1.25.9'
 
-          - script: go build ./...
-            displayName: Build
-
-          - script: go vet ./...
-            displayName: Vet
-
-          - script: go test ./...
-            displayName: Test
+          # The toolchain comes from the golang image rather than GoTool@0. That
+          # task fetches its tarball from the storage.googleapis.com/golang
+          # bucket, which denies anonymous reads - every version answers 403
+          # AccessDenied - so it cannot install any Go at all, on hosted and
+          # self-hosted agents alike. Go itself is still published, at
+          # dl.google.com/go; only the bucket the task uses is closed.
+          #
+          # The error names the version ("Failed to download version 1.25.9"),
+          # which reads like a bad input rather than a dead source.
+          #
+          # This also keeps one toolchain in the pipeline: the tag here and the
+          # builder stage in Dockerfile must match, so tests cannot pass on a
+          # compiler the image is not built with. The tag has to satisfy the
+          # `go` directive in go.mod, which the golang images will not silently
+          # substitute.
+          - script: |
+              set -euo pipefail
+              docker run --rm \
+                -v "$(Build.SourcesDirectory)":/src \
+                -w /src \
+                golang:1.25 \
+                sh -c 'go version && go build ./... && go vet ./... && go test ./...'
+            displayName: Build, vet and test
 
   - stage: Image
     displayName: Container image
