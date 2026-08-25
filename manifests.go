@@ -406,13 +406,27 @@ func parseMultiFileManifest (nodes ...models.ManifestNode) (models.API_ManifestI
     }
   }
 
-  // It's possible there were no installer or locale manifests or parsing them failed
+  // A manifest kind is missing here either because the file was not present or
+  // because unmarshalling it failed above, which logs and carries on. Both look
+  // identical from here, and both must be rejected: the code below dereferences
+  // defaultlocale unconditionally.
+  //
+  // Each error names the kind it checked. A version directory is usually
+  // incomplete because a pipeline was still writing it, and whoever reads the
+  // log goes looking for the file the message names.
   if len(installers) == 0 {
     return nil, errors.New("no (valid) installer manifest")
   }
   if len(versions) == 0 {
-    return nil, errors.New("no (valid) locale manifest")
+    return nil, errors.New("no (valid) version manifest")
   }
+  if defaultlocale == nil {
+    return nil, errors.New("no (valid) defaultLocale manifest")
+  }
+
+  // locales is deliberately unchecked. Additional locale manifests are optional
+  // - a package is complete with only its defaultLocale - so an empty slice is
+  // a valid package rather than a missing file.
 
   // This transforms the manifest data into the format the API will return.
   // This logic should probably be moved out of this function, so that it returns
