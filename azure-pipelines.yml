@@ -198,7 +198,7 @@ stages:
               echo "$API_KEY" | docker login --password-stdin --username "$API_USERNAME" pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
             env:
-              API_KEY: $(api-key)
+              API_KEY: $(group)
               API_USERNAME: $(api-username)
 
           - script: |
