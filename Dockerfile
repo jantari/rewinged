@@ -3,7 +3,7 @@
 # Builder image to compile the binary. The tag has to satisfy the `go` directive
 # in go.mod: the golang images set GOTOOLCHAIN=local, so an older builder fails
 # outright rather than fetching the toolchain go.mod asks for.
-FROM golang:1.29 AS builder
+FROM golang:1.27 AS builder
 
 # Version metadata the binary reports through `-version`. Left at the defaults
 # main.go declares when unset, so a plain `docker build .` still works.
