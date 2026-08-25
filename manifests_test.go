@@ -9,6 +9,7 @@ package main
 import (
   "os"
   "path/filepath"
+  "strings"
   "testing"
 
   "rewinged/logging"
@@ -106,6 +107,94 @@ PackageName: Probe Werkzeug
 ManifestType: locale
 ManifestVersion: 1.6.0
 `
+
+// A defaultLocale manifest at a supported schema version whose PackageName is a
+// mapping where a string belongs. It parses as a BaseManifest - which only
+// looks at the four identifying fields - and then fails to unmarshal as a
+// defaultLocale, which is the path that leaves the variable unset.
+const malformedDefaultLocaleManifest = `
+PackageIdentifier: Contoso.Probe
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: Contoso
+PackageName:
+  unexpected: mapping
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
+`
+
+// An incomplete version directory is reachable without anyone authoring a bad
+// manifest: the ingestion path is a directory a pipeline writes into, and a
+// partially delivered package is exactly this. Each case must be rejected with
+// an error naming the manifest that is actually missing - naming the wrong one
+// sends whoever is debugging it to a file that is not the problem.
+func TestParseMultiFileManifestRejectsIncompleteVersions(t *testing.T) {
+  tests := []struct {
+    name            string
+    docs            []string
+    wantErrContains string
+  }{
+    {
+      name:            "no defaultLocale manifest",
+      docs:            []string{versionManifest, installerManifest},
+      wantErrContains: "defaultLocale",
+    },
+    {
+      name:            "no version manifest",
+      docs:            []string{defaultLocaleManifest, installerManifest},
+      wantErrContains: "version",
+    },
+    {
+      name:            "no installer manifest",
+      docs:            []string{versionManifest, defaultLocaleManifest},
+      wantErrContains: "installer",
+    },
+    {
+      name:            "only a version manifest",
+      docs:            []string{versionManifest},
+      wantErrContains: "installer",
+    },
+    {
+      name:            "only a defaultLocale manifest",
+      docs:            []string{defaultLocaleManifest},
+      wantErrContains: "installer",
+    },
+    {
+      name:            "only an installer manifest",
+      docs:            []string{installerManifest},
+      wantErrContains: "version",
+    },
+    {
+      name:            "only a locale manifest",
+      docs:            []string{localeManifest},
+      wantErrContains: "installer",
+    },
+    {
+      // Present but unusable has to behave like absent. This is the path that
+      // logs and carries on, leaving the value unset for the code below it.
+      name:            "defaultLocale manifest present but malformed",
+      docs:            []string{versionManifest, malformedDefaultLocaleManifest, installerManifest},
+      wantErrContains: "defaultLocale",
+    },
+  }
+
+  for _, tt := range tests {
+    t.Run(tt.name, func(t *testing.T) {
+      nodes := manifestNodesFromYAML(t, tt.docs...)
+
+      manifest, err := parseMultiFileManifest(nodes...)
+      if err == nil {
+        t.Fatalf("expected an error, got manifest %+v", manifest)
+      }
+      if manifest != nil {
+        t.Errorf("expected a nil manifest alongside the error, got %+v", manifest)
+      }
+      if !strings.Contains(err.Error(), tt.wantErrContains) {
+        t.Errorf("error %q does not name the missing manifest (want it to contain %q)", err, tt.wantErrContains)
+      }
+    })
+  }
+}
 
 func TestParseMultiFileManifest(t *testing.T) {
   tests := []struct {
