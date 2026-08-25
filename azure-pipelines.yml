@@ -3,11 +3,6 @@
 # The image is built on every pull request so a change that breaks the build is
 # caught before it lands, and pushed only from the default branch - a pull
 # request from a fork must never be able to publish to an internal registry.
-#
-# Set `containerRegistry` below to the name of a Docker Registry service
-# connection before the push steps will do anything. Left empty, the pipeline
-# still builds and smoke-tests the image and skips the push, which is a useful
-# state to run in while the registry is being decided.
 trigger:
   branches:
     include:
@@ -196,7 +191,7 @@ stages:
           - script: |
               docker login --password pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
-            condition: and(succeeded(), ne(variables['containerRegistry'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
+            condition: and(succeeded(), ne(variables['api-key'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
 
           - script: |
               set -euo pipefail
@@ -216,8 +211,8 @@ stages:
             env:
               IMAGE_REPOSITORY: $(imageRepository)
               IMAGE_VERSION: $(imageVersion)
-            condition: and(succeeded(), ne(variables['containerRegistry'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
+            condition: and(succeeded(), ne(variables['api-key'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
 
-          - script: echo "containerRegistry is unset or this is not a publishable ref - built and tested only."
+          - script: echo "api-key is unset or this is not a publishable ref - built and tested only."
             displayName: Report that the push was skipped
-            condition: and(succeeded(), or(eq(variables['containerRegistry'], ''), not(or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))))
+            condition: and(succeeded(), or(eq(variables['api-key'], ''), not(or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))))
