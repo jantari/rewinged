@@ -18,7 +18,7 @@ pr:
 
 variables:
   # Repository path within that registry, e.g. 'infrastructure/rewinged'.
-  - name: repository
+  - name: imageRepository
     value: 'pscdev-containers-sandbox/rewinged'
   - name: imageRepositoryUri
     value: 'pscproget01.int.cw.local/pscdev-containers-sandbox/'
