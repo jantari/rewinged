@@ -39,6 +39,9 @@ stages:
         displayName: go build, vet and test
         pool: Lab_Linux
         steps:
+          - script: |
+              curl -sI https://storage.googleapis.com/golang/go1.25.9.linux-amd64.tar.gz | head -1
+              curl -sI https://proxy.golang.org/gopkg.in/yaml.v3/@v/list | head -1
           - task: GoTool@0
             displayName: Install the Go toolchain
             inputs:
