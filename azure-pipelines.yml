@@ -77,6 +77,10 @@ stages:
     displayName: Container image
     dependsOn: Test
     condition: succeeded()
+    variables:
+      # Repository path within that registry, e.g. 'infrastructure/rewinged'.
+      repository: 'pscdev-containers-sandbox/rewinged'
+      group: 'ProGet - PSCDEV-Containers-Sandbox'
     jobs:
       - job: image
         displayName: Build, smoke-test and push
