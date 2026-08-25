@@ -22,11 +22,9 @@ pr:
       - main
 
 variables:
-  # Name of the Docker Registry service connection in project settings.
-  # Empty means "build but do not push".
-  containerRegistry: 'ProGet - PSCDEV-Containers-Sandbox'
   # Repository path within that registry, e.g. 'infrastructure/rewinged'.
   repository: 'pscdev-containers-sandbox/rewinged'
+  group: 'ProGet - PSCDEV-Containers-Sandbox'
 
 stages:
   - stage: Test
@@ -195,12 +193,10 @@ stages:
               IMAGE_REPOSITORY: $(imageRepository)
               IMAGE_VERSION: $(imageVersion)
 
-          - task: Docker@2
+          - script: |
+              docker login --password pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
             condition: and(succeeded(), ne(variables['containerRegistry'], ''), or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/tags/')))
-            inputs:
-              command: login
-              containerRegistry: $(containerRegistry)
 
           - script: |
               set -euo pipefail
