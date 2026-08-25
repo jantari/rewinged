@@ -189,7 +189,7 @@ stages:
               IMAGE_VERSION: $(imageVersion)
 
           - script: |
-              echo "$(api-key)" | docker login --password-stdin pscproget01.int.cw.local/pscdev-containers-sandbox/
+              echo "$(api-key)" | docker login --password-stdin --username 'api' pscproget01.int.cw.local/pscdev-containers-sandbox/
             displayName: Sign in to the registry
 
           - script: |
