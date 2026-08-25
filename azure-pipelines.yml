@@ -72,13 +72,28 @@ stages:
           # and stamping works - which is why Dockerfile does not set this.
           - script: |
               set -euo pipefail
+
+              # An unset pipeline variable reaches the script as the literal
+              # text "$(name)" rather than as an empty string, which docker
+              # then rejects with "invalid reference format" - a message about
+              # tag syntax, naming nothing that would lead you to the variable.
+              case "${IMAGE_REPOSITORY}" in
+                ''|'$'*)
+                  echo "imageRepository resolved to '${IMAGE_REPOSITORY}'."
+                  echo "The pipeline's variables block is missing or not in scope for this job."
+                  exit 1
+                  ;;
+              esac
+
               docker run --rm \
-                -v "$(Build.SourcesDirectory)":/src \
+                -v "${SOURCES_DIR}":/src \
                 -w /src \
                 -e GOFLAGS=-buildvcs=false \
                 golang:1.25 \
                 sh -c 'go version && go build ./... && go vet ./... && go test ./...'
             displayName: Build, vet and test
+            env:
+              SOURCES_DIR: $(Build.SourcesDirectory)
 
   - stage: Image
     displayName: Container image
@@ -115,19 +130,25 @@ stages:
           - script: |
               set -euo pipefail
               docker build \
-                --build-arg "VERSION=$(imageVersion)" \
-                --build-arg "COMMIT=$(imageCommit)" \
-                --build-arg "COMPILE_TIME=$(imageCompileTime)" \
-                --label "org.opencontainers.image.created=$(imageCompileTime)" \
-                --label "org.opencontainers.image.version=$(imageVersion)" \
-                --label "org.opencontainers.image.revision=$(Build.SourceVersion)" \
+                --build-arg "VERSION=${IMAGE_VERSION}" \
+                --build-arg "COMMIT=${IMAGE_COMMIT}" \
+                --build-arg "COMPILE_TIME=${IMAGE_COMPILE_TIME}" \
+                --label "org.opencontainers.image.created=${IMAGE_COMPILE_TIME}" \
+                --label "org.opencontainers.image.version=${IMAGE_VERSION}" \
+                --label "org.opencontainers.image.revision=${SOURCE_VERSION}" \
                 --label "org.opencontainers.image.title=rewinged" \
                 --label "org.opencontainers.image.description=rewinged is a self-hosted winget package source" \
                 --label "org.opencontainers.image.licenses=MIT" \
-                --tag "$(imageRepository):$(imageVersion)" \
-                --tag "$(imageRepository):latest" \
+                --tag "${IMAGE_REPOSITORY}:${IMAGE_VERSION}" \
+                --tag "${IMAGE_REPOSITORY}:latest" \
                 .
             displayName: Build the image
+            env:
+              IMAGE_REPOSITORY: $(imageRepository)
+              IMAGE_VERSION: $(imageVersion)
+              IMAGE_COMMIT: $(imageCommit)
+              IMAGE_COMPILE_TIME: $(imageCompileTime)
+              SOURCE_VERSION: $(Build.SourceVersion)
 
           - script: |
               set -euo pipefail
@@ -135,14 +156,17 @@ stages:
               # The image must report the version it was stamped with. A binary
               # that answers "development-build" here was built without the
               # build args, which is invisible until someone tries to pin it.
-              reported="$(docker run --rm "$(imageRepository):$(imageVersion)" -version | head -n1)"
+              reported="$(docker run --rm "${IMAGE_REPOSITORY}:${IMAGE_VERSION}" -version | head -n1)"
               echo "reported: ${reported}"
 
               case "${reported}" in
-                *"$(imageVersion)"*) ;;
-                *) echo "expected the image to report $(imageVersion)"; exit 1 ;;
+                *"${IMAGE_VERSION}"*) ;;
+                *) echo "expected the image to report ${IMAGE_VERSION}"; exit 1 ;;
               esac
             displayName: Smoke-test the image
+            env:
+              IMAGE_REPOSITORY: $(imageRepository)
+              IMAGE_VERSION: $(imageVersion)
 
           - task: Docker@2
             displayName: Sign in to the registry
@@ -153,9 +177,12 @@ stages:
 
           - script: |
               set -euo pipefail
-              docker push "$(imageRepository):$(imageVersion)"
-              docker push "$(imageRepository):latest"
+              docker push "${IMAGE_REPOSITORY}:${IMAGE_VERSION}"
+              docker push "${IMAGE_REPOSITORY}:latest"
             displayName: Push the image
+            env:
+              IMAGE_REPOSITORY: $(imageRepository)
+              IMAGE_VERSION: $(imageVersion)
             condition: and(succeeded(), ne(variables['containerRegistry'], ''), eq(variables.isPublishable, true))
 
           - script: echo "containerRegistry is unset or this is not a publishable ref - built and tested only."
