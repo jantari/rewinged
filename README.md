@@ -316,6 +316,25 @@ Then start rewinged with the authentication-related configuration set:
   </tr>
 </table>
 
+## 🧪 Development
+
+Build, vet and test:
+
+```sh
+go build ./...
+go vet ./...
+go test ./...
+```
+
+Tests live beside the code they cover, as `<file>_test.go` in the same package.
+They run in CI on every push and pull request, and again before a release is
+published.
+
+**A change that fixes a defect is expected to carry a test that fails without
+the fix.** Several of the manifest-parsing paths run only on malformed or
+unreachable input, and those are the ones where a regression survives longest -
+nothing exercises them until a real package trips over them in production.
+
 ## Helpful reference documentation
 
 rewinged: Run `./rewinged -help` to see all available command-line options.

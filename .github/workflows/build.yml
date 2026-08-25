@@ -39,6 +39,9 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@latest
           staticcheck .
 
+      - name: Test
+        run: go test ./...
+
       - name: Install goversioninfo
         run: |
           go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
