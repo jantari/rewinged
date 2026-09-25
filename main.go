@@ -32,6 +32,7 @@ var releaseMode = "false"
 
 var wg sync.WaitGroup
 var jobs chan string = make(chan string)
+var reloadMutex sync.Mutex
 
 func main() {
     fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
@@ -170,10 +171,12 @@ func main() {
                 time.Sleep(5 * time.Second)
                 // Drop all events to clear the channel, this also enables new events to stream in again
                 CLEAR_CHANNEL: for { select { case <- fileEventsChannel:; default: break CLEAR_CHANNEL } }
+                reloadMutex.Lock()
                 getManifests(*packagePathPtr)
                 // wait for the synchronous full rescan to finish.
                 // any events accumulated in the meantime will be processed after.
                 wg.Wait()
+                reloadMutex.Unlock()
             }
 
             ei := <- fileEventsChannel
@@ -193,15 +196,28 @@ func main() {
     // TODO: Recovery maybe?
 
     fileServer := http.FileServer(http.Dir(*autoInternalizePathPtr))
+    reloadHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        reloadMutex.Lock()
+        defer reloadMutex.Unlock()
+
+        logging.Logger.Info().Msg("reloading manifests")
+        getManifests(*packagePathPtr)
+        wg.Wait()
+        logging.Logger.Info().Msgf("reload complete; found %v package manifests", models.Manifests.GetManifestCount())
+        w.WriteHeader(http.StatusNoContent)
+    })
+
     router.HandleFunc("GET /api/information", controllers.GetInformation)
 
     switch settings.SourceAuthenticationType {
     case "none":
+        router.Handle("POST /reload", reloadHandler)
         router.Handle("/installers/", http.StripPrefix("/installers", hideDirectoryListings(fileServer)))
         router.Handle("GET /api/packages", http.HandlerFunc(controllers.GetPackages))
         router.Handle("POST /api/manifestSearch", http.HandlerFunc(controllers.SearchForPackage))
         router.Handle("GET /api/packageManifests/{package_identifier}", http.HandlerFunc(getPackagesConfig.GetPackage))
     case "microsoftEntraId":
+        router.Handle("POST /reload", controllers.JWTAuthMiddleware(reloadHandler))
         router.Handle("/installers/", http.StripPrefix("/installers", controllers.JWTAuthMiddleware(hideDirectoryListings(fileServer))))
         router.Handle("GET /api/packages", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.GetPackages)))
         router.Handle("POST /api/manifestSearch", controllers.JWTAuthMiddleware(http.HandlerFunc(controllers.SearchForPackage)))
