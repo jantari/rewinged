@@ -67,6 +67,8 @@ Commandline arguments have the highest priority and take precedence over both en
         Set log verbosity: disable, error, warn, info, debug or trace (default "info")
   -manifestPath string
         The directory to search for package manifest files (default "./packages")
+  -followSymlinks bool
+        If true, follows directory symlinks when searching `manifestPath` for packages (default false)
   -sourceAuthEntraIDAuthorityURL string
         Authority/Issuer URL of the EntraID App used for authenticating clients
   -sourceAuthEntraIDResource string
@@ -97,6 +99,7 @@ REWINGED_HTTPSPRIVATEKEYFILE (string)
 REWINGED_LISTEN (string)
 REWINGED_LOGLEVEL (string)
 REWINGED_MANIFESTPATH (string)
+REWINGED_FOLLOWSYMLINKS (bool)
 REWINGED_SOURCEAUTHENTRAIDAUTHORITYURL (string)
 REWINGED_SOURCEAUTHENTRAIDRESOURCE (string)
 REWINGED_SOURCEAUTHTYPE (string)

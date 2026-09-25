@@ -1,20 +1,20 @@
 package main
 
 import (
-  "os"
-  "errors"
-  "slices"
-  "strings"
-  "io"
-  "io/fs"
-  "net/url"
-  "net/http"
-  "path/filepath"
+	"errors"
+	"io"
+	"io/fs"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 
-  "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 
-  "rewinged/logging"
-  "rewinged/models"
+	"rewinged/logging"
+	"rewinged/models"
 )
 
 func ingestManifestsWorker(autoInternalize bool, autoInternalizePath string, autoInternalizeSkipHosts []string) error {
@@ -219,6 +219,69 @@ func getManifests (path string) {
       subdirPath := filepath.Join(path, file.Name())
       logging.Logger.Trace().Msgf("searching directory %s", subdirPath)
       getManifests(subdirPath)
+    }
+  }
+}
+
+// Finds and parses manifests recursively, following directory symlinks while
+// visiting each resolved directory only once.
+func getManifestsFollow(path string) {
+  visited := make(map[string]struct{})
+  walkManifestDirectoriesFollow(path, visited, func(directory string) {
+    logging.Logger.Trace().Msgf("adding job %s", path)
+    // wg.Add() before goroutine, see staticcheck check SA2000 and also
+    // https://stackoverflow.com/questions/65213707/where-to-put-wg-add
+    wg.Add(1)
+    go func() {
+      jobs <- directory
+    }()
+  })
+}
+
+func walkManifestDirectoriesFollow(path string, visited map[string]struct{}, visit func(string)) {
+  resolvedPath, err := filepath.EvalSymlinks(path)
+  if err != nil {
+    logging.Logger.Error().Err(err).Str("path", path).Msg("cannot resolve manifest directory")
+    return
+  }
+
+  resolvedPath, err = filepath.Abs(resolvedPath)
+  if err != nil {
+    logging.Logger.Error().Err(err).Str("path", path).Msg("cannot make manifest directory path absolute")
+    return
+  }
+
+  if _, ok := visited[resolvedPath]; ok {
+    return
+  }
+  visited[resolvedPath] = struct{}{}
+
+  files, err := os.ReadDir(path)
+  if err != nil {
+    logging.Logger.Error().Err(err).Str("path", path).Msg("cannot read manifest directory")
+    return
+  }
+
+  visit(path)
+
+  for _, file := range files {
+    childPath := filepath.Join(path, file.Name())
+    if file.IsDir() {
+      logging.Logger.Trace().Msgf("searching directory %s", childPath)
+      walkManifestDirectoriesFollow(childPath, visited, visit)
+      continue
+    }
+
+    if file.Type()&os.ModeSymlink != 0 {
+      targetInfo, err := os.Stat(childPath)
+      if err != nil {
+        logging.Logger.Error().Err(err).Str("path", childPath).Msg("cannot inspect manifest directory symlink")
+        continue
+      }
+      if targetInfo.IsDir() {
+        logging.Logger.Trace().Msgf("searching directory symlink %s", childPath)
+        walkManifestDirectoriesFollow(childPath, visited, visit)
+      }
     }
   }
 }

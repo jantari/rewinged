@@ -3,25 +3,26 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "flag"
-    "sync"
-    "time"
-    "strings"
-    "unicode"
-    "net/http"
-    "net/netip"
-    "path/filepath"
-    // Configuration
-    "github.com/peterbourgon/ff/v3"
+	"flag"
+	"fmt"
+	"net/http"
+	"net/netip"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+	"unicode"
 
-    "github.com/rjeczalik/notify" // for live-reload of manifests
+	// Configuration
+	"github.com/peterbourgon/ff/v3"
 
-    "rewinged/settings"
-    "rewinged/logging"
-    "rewinged/models"
-    "rewinged/controllers"
+	"github.com/rjeczalik/notify" // for live-reload of manifests
+
+	"rewinged/controllers"
+	"rewinged/logging"
+	"rewinged/models"
+	"rewinged/settings"
 )
 
 // These variables are overwritten at compile/link time using -ldflags
@@ -38,6 +39,7 @@ func main() {
     var (
         versionFlagPtr = fs.Bool("version", false, "Print the version information and exit")
         packagePathPtr = fs.String("manifestPath", "./packages", "The directory to search for package manifest files")
+        followFlagPtr  = fs.Bool("followSymlinks", false, "Follow directory symlinks while searching `manifestPath`")
 
         tlsEnablePtr           = fs.Bool("https", false, "Serve encrypted HTTPS traffic directly from rewinged without the need for a proxy")
         tlsCertificatePtr      = fs.String("httpsCertificateFile", "./cert.pem", "The webserver certificate to use if HTTPS is enabled")
@@ -131,7 +133,11 @@ func main() {
         go ingestManifestsWorker(*autoInternalizePtr, *autoInternalizePathPtr, autoInternalizeSkipHosts)
     }
 
-    getManifests(*packagePathPtr)
+    if *followFlagPtr {
+        getManifestsFollow(*packagePathPtr)
+    } else {
+        getManifests(*packagePathPtr)
+    }
     wg.Wait()
 
     // I don't know whether this is safe.
@@ -170,7 +176,11 @@ func main() {
                 time.Sleep(5 * time.Second)
                 // Drop all events to clear the channel, this also enables new events to stream in again
                 CLEAR_CHANNEL: for { select { case <- fileEventsChannel:; default: break CLEAR_CHANNEL } }
-                getManifests(*packagePathPtr)
+                if *followFlagPtr {
+                    getManifestsFollow(*packagePathPtr)
+                } else {
+                    getManifests(*packagePathPtr)
+                }
                 // wait for the synchronous full rescan to finish.
                 // any events accumulated in the meantime will be processed after.
                 wg.Wait()
